@@ -1,0 +1,54 @@
+Metadata-Version: 2.4
+Name: PredictionWearApp
+Version: 0.1.0
+Summary: Desktop app for turbine blade wear forecasting
+Author: xxdime
+Requires-Python: >=3.12
+Description-Content-Type: text/markdown
+Requires-Dist: PySide6>=6.7.0
+Requires-Dist: numpy>=1.26.0
+Requires-Dist: scipy>=1.12.0
+Requires-Dist: scikit-learn>=1.4.0
+Requires-Dist: pandas>=2.2.0
+Requires-Dist: SQLAlchemy>=2.0.0
+Requires-Dist: alembic>=1.13.0
+Requires-Dist: pydantic>=2.6.0
+Provides-Extra: dev
+Requires-Dist: pytest>=8.0.0; extra == "dev"
+Requires-Dist: pytest-cov>=5.0.0; extra == "dev"
+Requires-Dist: ruff>=0.3.0; extra == "dev"
+Requires-Dist: black>=24.0.0; extra == "dev"
+Requires-Dist: mypy>=1.8.0; extra == "dev"
+Requires-Dist: types-setuptools; extra == "dev"
+
+# Turbine Wear Forecast
+
+Каркас desktop-приложения для прогнозирования стачивания деталей турбин.
+
+## Требования
+- Python 3.12+
+
+## Установка (venv + pip)
+```bash
+python -m venv .venv
+# Windows
+.venv\Scripts\activate
+# Linux
+source .venv/bin/activate
+
+python -m pip install --upgrade pip
+pip install -e .[dev]
+```
+
+## Запуск приложения
+```bash
+turbine-forecast
+```
+
+## Проверка качества
+```bash
+ruff check .
+black --check .
+mypy src
+pytest
+```

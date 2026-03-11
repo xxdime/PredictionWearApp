@@ -1,0 +1,14 @@
+README.md
+pyproject.toml
+src/PredictionWearApp.egg-info/PKG-INFO
+src/PredictionWearApp.egg-info/SOURCES.txt
+src/PredictionWearApp.egg-info/dependency_links.txt
+src/PredictionWearApp.egg-info/entry_points.txt
+src/PredictionWearApp.egg-info/requires.txt
+src/PredictionWearApp.egg-info/top_level.txt
+src/app/__init__.py
+src/app/main.py
+src/app/ui/__init__.py
+src/app/ui/windows/__init__.py
+src/app/ui/windows/start_window.py
+tests/test_smoke.py
