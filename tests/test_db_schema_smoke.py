@@ -1,8 +1,7 @@
 from sqlalchemy import create_engine, inspect
-from sqlalchemy.orm import sessionmaker
 
+from app.infrastructure.db import models  # noqa: F401
 from app.infrastructure.db.base import Base
-from app.infrastructure.db import models
 
 
 def test_tables_exist() -> None:

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Iterable
+from collections.abc import Iterable
 
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -48,4 +48,4 @@ class TemplateRepository:
                 if template is not None:
                     session.delete(template)
         except IntegrityError as exc:
-            raise ValueError(f"Вы не можете удалить шаблон пока существуют детали этого шаблона.") from exc
+            raise ValueError("Вы не можете удалить шаблон пока существуют детали этого шаблона.") from exc

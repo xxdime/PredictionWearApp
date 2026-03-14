@@ -16,10 +16,10 @@ class Template(Base):
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
 
-    parameters: Mapped[list["TemplateParameter"]] = relationship(
+    parameters: Mapped[list[TemplateParameter]] = relationship(
         back_populates="template", cascade="all, delete-orphan"
     )
-    parts: Mapped[list["Part"]] = relationship(back_populates="template")
+    parts: Mapped[list[Part]] = relationship(back_populates="template")
 
 
 class TemplateParameter(Base):
@@ -39,8 +39,8 @@ class TemplateParameter(Base):
 
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
 
-    template: Mapped["Template"] = relationship(back_populates="parameters")
-    measurements: Mapped[list["Measurement"]] = relationship(back_populates="parameter")
+    template: Mapped[Template] = relationship(back_populates="parameters")
+    measurements: Mapped[list[Measurement]] = relationship(back_populates="parameter")
 
 
 class Part(Base):
@@ -56,8 +56,8 @@ class Part(Base):
 
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
 
-    template: Mapped["Template"] = relationship(back_populates="parts")
-    measurements: Mapped[list["Measurement"]] = relationship(
+    template: Mapped[Template] = relationship(back_populates="parts")
+    measurements: Mapped[list[Measurement]] = relationship(
         back_populates="part", cascade="all, delete-orphan"
     )
 
@@ -78,8 +78,8 @@ class Measurement(Base):
     value: Mapped[float] = mapped_column(Float, nullable=False)  # значение измерения
     measured_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
 
-    part: Mapped["Part"] = relationship(back_populates="measurements")
-    parameter: Mapped["TemplateParameter"] = relationship(back_populates="measurements")
+    part: Mapped[Part] = relationship(back_populates="measurements")
+    parameter: Mapped[TemplateParameter] = relationship(back_populates="measurements")
 
 
 class ForecastConfig(Base):

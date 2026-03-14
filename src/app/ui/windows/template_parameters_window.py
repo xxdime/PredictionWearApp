@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from sqlalchemy.exc import IntegrityError
-
 from PySide6.QtWidgets import (
     QHBoxLayout,
     QMainWindow,

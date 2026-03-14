@@ -9,7 +9,6 @@ from PySide6.QtWidgets import (
     QTextEdit,
 )
 
-from app.infrastructure.db.models import Template
 from app.infrastructure.db.repositories.template_repo import TemplateRepository
 
 

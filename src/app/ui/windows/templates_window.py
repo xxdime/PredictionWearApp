@@ -1,15 +1,13 @@
 from __future__ import annotations
 
-from sqlalchemy.exc import IntegrityError
-
 from PySide6.QtWidgets import (
     QHBoxLayout,
     QListWidget,
+    QMainWindow,
     QMessageBox,
     QPushButton,
     QVBoxLayout,
     QWidget,
-    QMainWindow,
 )
 
 from app.infrastructure.db.models import Template
