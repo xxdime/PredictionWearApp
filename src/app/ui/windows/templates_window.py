@@ -19,8 +19,8 @@ from app.ui.windows.template_parameters_window import TemplateParametersWindow
 
 
 class TemplatesWindow(QMainWindow):
-    def __init__(self) -> None:
-        super().__init__()
+    def __init__(self, parent=None) -> None:
+        super().__init__(parent)
         self.parameters_window = None
         self.setWindowTitle("Шаблоны")
         self.resize(900, 600)
@@ -110,8 +110,13 @@ class TemplatesWindow(QMainWindow):
         if QMessageBox.question(
             self, "Удалить", f"Удалить шаблон '{tmpl.name}'?"
         ) == QMessageBox.Yes:
-            self.repo.delete(tmpl.id)
-            self.reload()
+            try:
+                self.repo.delete(tmpl.id)
+                self.reload()
+            except ValueError as e:
+                QMessageBox.warning(self, "Шаблоны", str(e))
+            except Exception as e:
+                QMessageBox.critical(self, "Ошибка", f"Не удалось изменить шаблон:\n{e}")
 
     def on_params(self) -> None:
         tmpl = self._selected_template()

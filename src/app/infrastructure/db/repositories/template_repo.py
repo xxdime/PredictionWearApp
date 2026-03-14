@@ -42,7 +42,10 @@ class TemplateRepository:
             raise ValueError(f"Шаблон с именем '{name}' уже существует.") from exc
 
     def delete(self, template_id: int) -> None:
-        with get_session() as session:
-            template = session.get(Template, template_id)
-            if template is not None:
-                session.delete(template)
+        try:
+            with get_session() as session:
+                template = session.get(Template, template_id)
+                if template is not None:
+                    session.delete(template)
+        except IntegrityError as exc:
+            raise ValueError(f"Вы не можете удалить шаблон пока существуют детали этого шаблона.") from exc
