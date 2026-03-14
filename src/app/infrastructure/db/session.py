@@ -8,7 +8,8 @@ from sqlalchemy.orm import Session, sessionmaker
 DATABASE_URL = "sqlite:///prediction_wear_app.db"
 
 engine = create_engine(DATABASE_URL, echo=False, future=True)
-SessionLocal = sessionmaker(bind=engine,
+SessionLocal = sessionmaker(
+    bind=engine,
     autoflush=False,
     autocommit=False,
     expire_on_commit=False,

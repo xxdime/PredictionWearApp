@@ -132,7 +132,10 @@ class StartWindow(QMainWindow):
             QMessageBox.warning(self, "Детали", "Выберите деталь.")
             return
 
-        if QMessageBox.question(self, "Удалить", f"Удалить деталь '{part.name}'?") == QMessageBox.Yes:
+        if (
+            QMessageBox.question(self, "Удалить", f"Удалить деталь '{part.name}'?")
+            == QMessageBox.Yes
+        ):
             try:
                 self.part_repo.delete(part.id)
                 self.reload_parts()

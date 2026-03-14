@@ -31,9 +31,7 @@ class TemplateParametersWindow(QMainWindow):
         root = QHBoxLayout(central)
 
         self.table = QTableWidget(0, 4)
-        self.table.setHorizontalHeaderLabels(
-            ["Название", "Ед. изм.", "Критическое", "Направление"]
-        )
+        self.table.setHorizontalHeaderLabels(["Название", "Ед. изм.", "Критическое", "Направление"])
         root.addWidget(self.table, 3)
 
         right = QVBoxLayout()

@@ -17,5 +17,5 @@ def test_tables_exist() -> None:
         "measurements",
         "forecast_configs",
     }
-    
+
     assert expected.issubset(tables)

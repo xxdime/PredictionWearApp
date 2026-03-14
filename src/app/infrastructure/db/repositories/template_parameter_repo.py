@@ -45,7 +45,9 @@ class TemplateParameterRepository:
                 session.refresh(param)
                 return param
         except IntegrityError as exc:
-            raise ValueError(f"Параметр с именем '{name}' уже существует для данного шаблона.") from exc
+            raise ValueError(
+                f"Параметр с именем '{name}' уже существует для данного шаблона."
+            ) from exc
 
     def update(
         self,
@@ -65,7 +67,9 @@ class TemplateParameterRepository:
                 param.critical_value = critical_value
                 param.degradation_direction = degradation_direction
         except IntegrityError as exc:
-            raise ValueError(f"Параметр с именем '{name}' уже существует для данного шаблона.") from exc
+            raise ValueError(
+                f"Параметр с именем '{name}' уже существует для данного шаблона."
+            ) from exc
 
     def delete(self, parameter_id: int) -> None:
         with get_session() as session:

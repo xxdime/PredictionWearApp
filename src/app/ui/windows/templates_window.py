@@ -105,9 +105,10 @@ class TemplatesWindow(QMainWindow):
         if tmpl is None:
             QMessageBox.warning(self, "Шаблоны", "Выберите шаблон")
             return
-        if QMessageBox.question(
-            self, "Удалить", f"Удалить шаблон '{tmpl.name}'?"
-        ) == QMessageBox.Yes:
+        if (
+            QMessageBox.question(self, "Удалить", f"Удалить шаблон '{tmpl.name}'?")
+            == QMessageBox.Yes
+        ):
             try:
                 self.repo.delete(tmpl.id)
                 self.reload()

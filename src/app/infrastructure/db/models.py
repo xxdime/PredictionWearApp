@@ -24,18 +24,20 @@ class Template(Base):
 
 class TemplateParameter(Base):
     __tablename__ = "template_parameters"
-    __table_args__ = (
-        UniqueConstraint("template_id", "name", name="uq_template_parameter_name"),
-    )
+    __table_args__ = (UniqueConstraint("template_id", "name", name="uq_template_parameter_name"),)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    template_id: Mapped[int] = mapped_column(ForeignKey("templates.id", ondelete="CASCADE"), nullable=False)
+    template_id: Mapped[int] = mapped_column(
+        ForeignKey("templates.id", ondelete="CASCADE"), nullable=False
+    )
 
     name: Mapped[str] = mapped_column(String(120), nullable=False)
     unit: Mapped[str] = mapped_column(String(32), default="mm", nullable=False)
     critical_value: Mapped[float] = mapped_column(Float, nullable=False)
 
-    degradation_direction: Mapped[str] = mapped_column(String(32), default="decrease_to_critical", nullable=False)
+    degradation_direction: Mapped[str] = mapped_column(
+        String(32), default="decrease_to_critical", nullable=False
+    )
 
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
 
@@ -47,7 +49,9 @@ class Part(Base):
     __tablename__ = "parts"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    template_id: Mapped[int] = mapped_column(ForeignKey("templates.id", ondelete="RESTRICT"), nullable=False)
+    template_id: Mapped[int] = mapped_column(
+        ForeignKey("templates.id", ondelete="RESTRICT"), nullable=False
+    )
 
     name: Mapped[str] = mapped_column(String(120), nullable=False)
     serial_number: Mapped[str | None] = mapped_column(String(120), nullable=True)
@@ -85,11 +89,15 @@ class Measurement(Base):
 class ForecastConfig(Base):
     __tablename__ = "forecast_configs"
     __table_args__ = (
-        UniqueConstraint("template_id", "parameter_id", name="uq_forecast_config_template_parameter"),
+        UniqueConstraint(
+            "template_id", "parameter_id", name="uq_forecast_config_template_parameter"
+        ),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    template_id: Mapped[int] = mapped_column(ForeignKey("templates.id", ondelete="CASCADE"), nullable=False)
+    template_id: Mapped[int] = mapped_column(
+        ForeignKey("templates.id", ondelete="CASCADE"), nullable=False
+    )
     parameter_id: Mapped[int] = mapped_column(
         ForeignKey("template_parameters.id", ondelete="CASCADE"), nullable=False
     )

@@ -48,4 +48,6 @@ class TemplateRepository:
                 if template is not None:
                     session.delete(template)
         except IntegrityError as exc:
-            raise ValueError("Вы не можете удалить шаблон пока существуют детали этого шаблона.") from exc
+            raise ValueError(
+                "Вы не можете удалить шаблон пока существуют детали этого шаблона."
+            ) from exc
