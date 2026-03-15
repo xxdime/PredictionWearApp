@@ -107,7 +107,7 @@ class TemplateParametersWindow(QMainWindow):
             except ValueError as e:
                 QMessageBox.warning(self, "Параметры", str(e))
             except Exception as e:
-                QMessageBox.critical(self, "Ошибка", f"Не удалось создать параметр:\n{e}")
+                QMessageBox.critical(self, "Ошибка", f"Не удалось изменить параметр:\n{e}")
 
     def on_delete(self) -> None:
         param = self._selected_param()
@@ -115,5 +115,10 @@ class TemplateParametersWindow(QMainWindow):
             QMessageBox.warning(self, "Параметры", "Выберите параметр")
             return
         if QMessageBox.question(self, "Удалить", f"Удалить '{param.name}'?") == QMessageBox.Yes:
-            self.repo.delete(param.id)
-            self.reload()
+            try:
+                self.repo.delete(param.id)
+                self.reload()
+            except ValueError as e:
+                QMessageBox.warning(self, "Параметры", str(e))
+            except Exception as e:
+                QMessageBox.critical(self, "Ошибка", f"Не удалось удалить параметр:\n{e}")

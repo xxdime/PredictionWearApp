@@ -72,7 +72,13 @@ class TemplateParameterRepository:
             ) from exc
 
     def delete(self, parameter_id: int) -> None:
-        with get_session() as session:
-            param = session.get(TemplateParameter, parameter_id)
-            if param is not None:
-                session.delete(param)
+        try:
+            with get_session() as session:
+                param = session.get(TemplateParameter, parameter_id)
+                if param is not None:
+                    session.delete(param)
+        except IntegrityError as exc:
+            raise ValueError(
+                "Вы не можете удалить этот параметр, "
+                "так как минимум у одной детали есть измерения, связанные с ним."
+            ) from exc

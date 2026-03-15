@@ -78,8 +78,8 @@ class Measurement(Base):
         ForeignKey("template_parameters.id", ondelete="RESTRICT"), nullable=False
     )
 
-    operating_hours: Mapped[float] = mapped_column(Float, nullable=False)  # часы наработки
-    value: Mapped[float] = mapped_column(Float, nullable=False)  # значение измерения
+    operating_hours: Mapped[float] = mapped_column(Float, nullable=False)
+    value: Mapped[float] = mapped_column(Float, nullable=False)
     measured_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
 
     part: Mapped[Part] = relationship(back_populates="measurements")
@@ -102,11 +102,9 @@ class ForecastConfig(Base):
         ForeignKey("template_parameters.id", ondelete="CASCADE"), nullable=False
     )
 
-    # МНК
     lsq_model_type: Mapped[str] = mapped_column(String(32), default="linear", nullable=False)
     lsq_poly_degree: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
 
-    # GPR
     gpr_kernel_type: Mapped[str] = mapped_column(String(64), default="RBF", nullable=False)
     gpr_alpha: Mapped[float] = mapped_column(Float, default=1e-6, nullable=False)
     gpr_confidence_level: Mapped[float] = mapped_column(Float, default=0.95, nullable=False)
