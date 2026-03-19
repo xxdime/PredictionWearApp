@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QComboBox,
     QGridLayout,
@@ -15,11 +14,13 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from app.domain.services.forecast_service import ForecastService
 from app.infrastructure.db.models import Measurement, Part, TemplateParameter
 from app.infrastructure.db.repositories.measurement_repo import MeasurementRepository
 from app.infrastructure.db.repositories.part_repo import PartRepository
 from app.infrastructure.db.repositories.template_parameter_repo import TemplateParameterRepository
 from app.ui.dialogs.measurement_dialog import MeasurementDialog
+from app.ui.widgets.forecast_plot_widget import ForecastPlotWidget
 
 
 class PartWindow(QMainWindow):
@@ -27,11 +28,12 @@ class PartWindow(QMainWindow):
         super().__init__(parent)
         self.part_id = part_id
         self.setWindowTitle(f"Деталь: {part_name}")
-        self.resize(1200, 760)
+        self.resize(1300, 800)
 
         self.part_repo = PartRepository()
         self.param_repo = TemplateParameterRepository()
         self.measurement_repo = MeasurementRepository()
+        self.forecast_service = ForecastService(confidence_level=0.95)
 
         self._part: Part | None = self.part_repo.get(part_id)
         if self._part is None:
@@ -80,16 +82,14 @@ class PartWindow(QMainWindow):
         right.addStretch()
         center.addLayout(right, 0, 1)
 
-        self.plot_placeholder = QLabel("График будет реализован на этапе 6 (МНК + GPR).")
-        self.plot_placeholder.setStyleSheet("border: 1px solid gray; padding: 10px;")
-        self.plot_placeholder.setAlignment(Qt.AlignCenter)
-        center.addWidget(self.plot_placeholder, 1, 0, 1, 2)
+        self.plot_widget = ForecastPlotWidget()
+        center.addWidget(self.plot_widget, 1, 0, 1, 2)
 
         self.lbl_current_param_forecast = QLabel(
             "Прогноз по выбранному параметру: нажмите 'Обновить график'."
         )
         self.lbl_earliest_forecast = QLabel(
-            "Самый ранний критический параметр: будет рассчитан на этапе 6."
+            "Самый ранний критический параметр: будет рассчитан после обновления графика."
         )
         root.addWidget(self.lbl_current_param_forecast)
         root.addWidget(self.lbl_earliest_forecast)
@@ -119,6 +119,7 @@ class PartWindow(QMainWindow):
         param = self._current_parameter()
         if param is None:
             self._measurements = []
+            self.plot_widget.clear()
             return
 
         self._measurements = list(
@@ -188,16 +189,67 @@ class PartWindow(QMainWindow):
             except Exception as e:
                 QMessageBox.critical(self, "Ошибка", f"Не удалось удалить измерение:\n{e}")
 
+    def _collect_points(self, parameter_id: int) -> tuple[list[float], list[float]]:
+        ms = list(self.measurement_repo.list_by_part_and_parameter(self.part_id, parameter_id))
+        x = [m.operating_hours for m in ms]
+        y = [m.value for m in ms]
+        return x, y
+
     def on_refresh_plot(self) -> None:
         param = self._current_parameter()
         if param is None:
             QMessageBox.information(self, "График", "Нет выбранного параметра.")
             return
 
-        self.lbl_current_param_forecast.setText(
-            f"Прогноз по '{param.name}': будет рассчитан на этапе 6."
-        )
-        self.lbl_earliest_forecast.setText(
-            "Самый ранний критический параметр: будет рассчитан на этапе 6."
-        )
-        QMessageBox.information(self, "Обновить график", "Заглушка этапа 5: график обновлён.")
+        x, y = self._collect_points(param.id)
+        if len(x) < 2:
+            QMessageBox.warning(self, "Недостаточно данных", "Нужно минимум 2 измерения.")
+            self.plot_widget.clear()
+            self.lbl_current_param_forecast.setText(
+                f"Прогноз по '{param.name}': недостаточно данных."
+            )
+            return
+
+        try:
+            result = self.forecast_service.compute(
+                operating_hours=x,
+                values=y,
+                critical_value=param.critical_value,
+            )
+            self.plot_widget.draw(result, critical_value=param.critical_value)
+
+            if result.t_critical_lsq is None:
+                msg = f"По параметру '{param.name}' время достижения критического значения не определено."
+            else:
+                msg = (
+                    f"По параметру '{param.name}' критическое значение будет достигнуто примерно "
+                    f"на {result.t_critical_lsq:.2f} ч наработки (оценка МНК)."
+                )
+            self.lbl_current_param_forecast.setText(msg)
+
+            earliest_name: str | None = None
+            earliest_t: float | None = None
+
+            for p in self._parameters:
+                px, py = self._collect_points(p.id)
+                if len(px) < 2:
+                    continue
+                r = self.forecast_service.compute(px, py, p.critical_value)
+                if r.t_critical_lsq is None:
+                    continue
+                if earliest_t is None or r.t_critical_lsq < earliest_t:
+                    earliest_t = r.t_critical_lsq
+                    earliest_name = p.name
+
+            if earliest_name is None or earliest_t is None:
+                self.lbl_earliest_forecast.setText(
+                    "Самый ранний критический параметр: недостаточно данных для оценки."
+                )
+            else:
+                self.lbl_earliest_forecast.setText(
+                    f"Самый ранний критический параметр: '{earliest_name}', "
+                    f"примерно на {earliest_t:.2f} ч наработки."
+                )
+
+        except Exception as e:
+            QMessageBox.critical(self, "Ошибка прогноза", str(e))
