@@ -16,6 +16,7 @@ from PySide6.QtWidgets import (
 
 from app.domain.services.forecast_service import ForecastService
 from app.infrastructure.db.models import Measurement, Part, TemplateParameter
+from app.infrastructure.db.repositories.forecast_config_repo import ForecastConfigRepository
 from app.infrastructure.db.repositories.measurement_repo import MeasurementRepository
 from app.infrastructure.db.repositories.part_repo import PartRepository
 from app.infrastructure.db.repositories.template_parameter_repo import TemplateParameterRepository
@@ -33,7 +34,8 @@ class PartWindow(QMainWindow):
         self.part_repo = PartRepository()
         self.param_repo = TemplateParameterRepository()
         self.measurement_repo = MeasurementRepository()
-        self.forecast_service = ForecastService(confidence_level=0.95)
+        self.forecast_config_repo = ForecastConfigRepository()
+        self.forecast_service = ForecastService()
 
         self._part: Part | None = self.part_repo.get(part_id)
         if self._part is None:
@@ -211,10 +213,18 @@ class PartWindow(QMainWindow):
             return
 
         try:
+            cfg = self.forecast_config_repo.get_or_create_default(self._part.template_id, param.id)
+
             result = self.forecast_service.compute(
                 operating_hours=x,
                 values=y,
                 critical_value=param.critical_value,
+                degradation_direction=param.degradation_direction,
+                lsq_model_type=cfg.lsq_model_type,
+                lsq_poly_degree=cfg.lsq_poly_degree,
+                gpr_kernel_type=cfg.gpr_kernel_type,
+                gpr_alpha=cfg.gpr_alpha,
+                gpr_confidence_level=cfg.gpr_confidence_level,
             )
             self.plot_widget.draw(result, critical_value=param.critical_value)
 
@@ -234,7 +244,19 @@ class PartWindow(QMainWindow):
                 px, py = self._collect_points(p.id)
                 if len(px) < 2:
                     continue
-                r = self.forecast_service.compute(px, py, p.critical_value)
+
+                pcfg = self.forecast_config_repo.get_or_create_default(self._part.template_id, p.id)
+                r = self.forecast_service.compute(
+                    px,
+                    py,
+                    p.critical_value,
+                    degradation_direction=p.degradation_direction,
+                    lsq_model_type=pcfg.lsq_model_type,
+                    lsq_poly_degree=pcfg.lsq_poly_degree,
+                    gpr_kernel_type=pcfg.gpr_kernel_type,
+                    gpr_alpha=pcfg.gpr_alpha,
+                    gpr_confidence_level=pcfg.gpr_confidence_level,
+                )
                 if r.t_critical_lsq is None:
                     continue
                 if earliest_t is None or r.t_critical_lsq < earliest_t:

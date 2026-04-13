@@ -13,16 +13,12 @@ class ForecastPlotWidget(QWidget):
         layout = QVBoxLayout(self)
         self.plot = pg.PlotWidget()
         self.plot.showGrid(x=True, y=True, alpha=0.3)
-        self.plot.addLegend()
         layout.addWidget(self.plot)
 
     def clear(self) -> None:
         self.plot.clear()
-        self.plot.addLegend()
 
-    def draw(
-        self, result: ForecastResult, critical_value: float, confidence_z: float = 1.96
-    ) -> None:
+    def draw(self, result: ForecastResult, critical_value: float) -> None:
         self.clear()
 
         self.plot.plot(
@@ -38,7 +34,7 @@ class ForecastPlotWidget(QWidget):
             result.x_grid,
             result.y_lsq,
             pen=pg.mkPen(width=2),
-            name="МНК (линейная)",
+            name="МНК",
         )
 
         self.plot.plot(
@@ -48,23 +44,21 @@ class ForecastPlotWidget(QWidget):
             name="GPR mean",
         )
 
-        upper = result.y_gpr_mean + confidence_z * result.y_gpr_std
-        lower = result.y_gpr_mean - confidence_z * result.y_gpr_std
+        upper = result.y_gpr_mean + result.confidence_z * result.y_gpr_std
+        lower = result.y_gpr_mean - result.confidence_z * result.y_gpr_std
 
         ci_brush = pg.mkBrush(100, 149, 237, 60)
-        ci_curve_upper = pg.PlotDataItem(result.x_grid, upper, pen=None)
-        ci_curve_lower = pg.PlotDataItem(result.x_grid, lower, pen=None)
-        fill = pg.FillBetweenItem(ci_curve_upper, ci_curve_lower, brush=ci_brush)
-        self.plot.addItem(ci_curve_upper)
-        self.plot.addItem(ci_curve_lower)
+        ci_u = pg.PlotDataItem(result.x_grid, upper, pen=None)
+        ci_l = pg.PlotDataItem(result.x_grid, lower, pen=None)
+        fill = pg.FillBetweenItem(ci_u, ci_l, brush=ci_brush)
+        self.plot.addItem(ci_u)
+        self.plot.addItem(ci_l)
         self.plot.addItem(fill)
 
         crit_line = pg.InfiniteLine(
             pos=critical_value,
             angle=0,
             pen=pg.mkPen("r", width=2),
-            label="Критическое",
-            labelOpts={"position": 0.9, "color": "r"},
         )
         self.plot.addItem(crit_line)
 
@@ -75,5 +69,5 @@ class ForecastPlotWidget(QWidget):
                 pen=None,
                 symbol="x",
                 symbolSize=12,
-                name="Точка достижения критического",
+                name="Крит. точка",
             )

@@ -12,7 +12,9 @@ from PySide6.QtWidgets import (
 )
 
 from app.infrastructure.db.models import TemplateParameter
+from app.infrastructure.db.repositories.forecast_config_repo import ForecastConfigRepository
 from app.infrastructure.db.repositories.template_parameter_repo import TemplateParameterRepository
+from app.ui.dialogs.forecast_config_dialog import ForecastConfigDialog
 from app.ui.dialogs.parameter_dialog import ParameterDialog
 
 
@@ -24,6 +26,7 @@ class TemplateParametersWindow(QMainWindow):
         self.resize(900, 500)
 
         self.repo = TemplateParameterRepository()
+        self.forecast_cfg_repo = ForecastConfigRepository()
 
         central = QWidget(self)
         self.setCentralWidget(central)
@@ -40,15 +43,19 @@ class TemplateParametersWindow(QMainWindow):
         self.btn_add = QPushButton("Добавить")
         self.btn_edit = QPushButton("Изменить")
         self.btn_delete = QPushButton("Удалить")
+        self.btn_forecast_cfg = QPushButton("Настройки прогноза")
 
         right.addWidget(self.btn_add)
         right.addWidget(self.btn_edit)
         right.addWidget(self.btn_delete)
+        right.addSpacing(12)
+        right.addWidget(self.btn_forecast_cfg)
         right.addStretch()
 
         self.btn_add.clicked.connect(self.on_add)
         self.btn_edit.clicked.connect(self.on_edit)
         self.btn_delete.clicked.connect(self.on_delete)
+        self.btn_forecast_cfg.clicked.connect(self.on_forecast_config)
 
         self.reload()
 
@@ -73,16 +80,8 @@ class TemplateParametersWindow(QMainWindow):
         dialog = ParameterDialog(self)
         if dialog.exec():
             name, unit, crit, direction = dialog.get_data()
-            if not name:
-                QMessageBox.warning(self, "Параметры", "Название не может быть пустым")
-                return
-            try:
-                self.repo.create(self.template_id, name, unit, crit, direction)
-                self.reload()
-            except ValueError as e:
-                QMessageBox.warning(self, "Параметры", str(e))
-            except Exception as e:
-                QMessageBox.critical(self, "Ошибка", f"Не удалось создать параметр:\n{e}")
+            self.repo.create(self.template_id, name, unit, crit, direction)
+            self.reload()
 
     def on_edit(self) -> None:
         param = self._selected_param()
@@ -98,16 +97,8 @@ class TemplateParametersWindow(QMainWindow):
         )
         if dialog.exec():
             name, unit, crit, direction = dialog.get_data()
-            if not name:
-                QMessageBox.warning(self, "Параметры", "Название не может быть пустым")
-                return
-            try:
-                self.repo.update(param.id, name, unit, crit, direction)
-                self.reload()
-            except ValueError as e:
-                QMessageBox.warning(self, "Параметры", str(e))
-            except Exception as e:
-                QMessageBox.critical(self, "Ошибка", f"Не удалось изменить параметр:\n{e}")
+            self.repo.update(param.id, name, unit, crit, direction)
+            self.reload()
 
     def on_delete(self) -> None:
         param = self._selected_param()
@@ -115,10 +106,36 @@ class TemplateParametersWindow(QMainWindow):
             QMessageBox.warning(self, "Параметры", "Выберите параметр")
             return
         if QMessageBox.question(self, "Удалить", f"Удалить '{param.name}'?") == QMessageBox.Yes:
-            try:
-                self.repo.delete(param.id)
-                self.reload()
-            except ValueError as e:
-                QMessageBox.warning(self, "Параметры", str(e))
-            except Exception as e:
-                QMessageBox.critical(self, "Ошибка", f"Не удалось удалить параметр:\n{e}")
+            self.repo.delete(param.id)
+            self.reload()
+
+    def on_forecast_config(self) -> None:
+        param = self._selected_param()
+        if param is None:
+            QMessageBox.warning(self, "Настройки прогноза", "Выберите параметр.")
+            return
+
+        cfg = self.forecast_cfg_repo.get_or_create_default(self.template_id, param.id)
+
+        dialog = ForecastConfigDialog(
+            self,
+            lsq_model_type=cfg.lsq_model_type,
+            lsq_poly_degree=cfg.lsq_poly_degree,
+            gpr_kernel_type=cfg.gpr_kernel_type,
+            gpr_alpha=cfg.gpr_alpha,
+            gpr_confidence_level=cfg.gpr_confidence_level,
+        )
+        if dialog.exec():
+            lsq_model_type, lsq_poly_degree, gpr_kernel_type, gpr_alpha, gpr_confidence_level = (
+                dialog.get_data()
+            )
+            self.forecast_cfg_repo.upsert(
+                self.template_id,
+                param.id,
+                lsq_model_type=lsq_model_type,
+                lsq_poly_degree=lsq_poly_degree,
+                gpr_kernel_type=gpr_kernel_type,
+                gpr_alpha=gpr_alpha,
+                gpr_confidence_level=gpr_confidence_level,
+            )
+            QMessageBox.information(self, "Настройки прогноза", "Сохранено.")
