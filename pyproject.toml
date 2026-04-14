@@ -21,6 +21,7 @@ dependencies = [
   "alembic>=1.13.0",
   "pydantic>=2.6.0",
   "pyqtgraph>=0.13.7",
+  "sympy>=1.12"
 ]
 
 [project.optional-dependencies]
