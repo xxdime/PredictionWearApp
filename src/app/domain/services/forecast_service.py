@@ -8,6 +8,9 @@ from scipy.optimize import curve_fit
 
 from app.domain.services.lsq_formula import bounds_from_json, parse_lsq_formula
 
+DEFAULT_FORMULA_BOUND_LOW = -1e6
+DEFAULT_FORMULA_BOUND_HIGH = 1e6
+
 
 @dataclass
 class ForecastResult:
@@ -93,8 +96,10 @@ class ForecastService:
     ) -> ForecastResult:
         if len(operating_hours) < 2:
             raise ValueError("Для прогноза нужно минимум 2 измерения.")
+        if len(operating_hours) != len(values):
+            raise ValueError("Количество точек времени и значений должно совпадать.")
 
-        pairs = sorted(zip(operating_hours, values, strict=False), key=lambda p: p[0])
+        pairs = sorted(zip(operating_hours, values, strict=True), key=lambda p: p[0])
         x = np.array([p[0] for p in pairs], dtype=float)
         y = np.array([p[1] for p in pairs], dtype=float)
 
@@ -112,13 +117,20 @@ class ForecastService:
             upper: list[float] = []
             p0: list[float] = []
             for param_name in parsed.parameter_names:
-                low, high = bounds_map.get(param_name, (-1e6, 1e6))
+                low, high = bounds_map.get(
+                    param_name, (DEFAULT_FORMULA_BOUND_LOW, DEFAULT_FORMULA_BOUND_HIGH)
+                )
                 lower.append(float(low))
                 upper.append(float(high))
                 p0.append(float((low + high) / 2.0))
 
             def wrapped_formula(x_data: np.ndarray, *params: float) -> np.ndarray:
-                return np.asarray(model_fn(x_data, *params), dtype=float)
+                try:
+                    return np.asarray(model_fn(x_data, *params), dtype=float)
+                except (TypeError, ValueError) as e:
+                    raise ValueError(
+                        "Формула МНК должна возвращать числовые значения для заданных параметров."
+                    ) from e
 
             popt, _ = curve_fit(
                 wrapped_formula,

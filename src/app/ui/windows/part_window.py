@@ -23,6 +23,11 @@ from app.infrastructure.db.repositories.template_parameter_repo import TemplateP
 from app.ui.dialogs.measurement_dialog import MeasurementDialog
 from app.ui.widgets.forecast_plot_widget import ForecastPlotWidget
 
+# Шкала качества MAPE: <10% отлично, 10-20% хорошо, 20-50% удовлетворительно, >=50% плохо.
+MAPE_EXCELLENT_THRESHOLD = 10.0
+MAPE_GOOD_THRESHOLD = 20.0
+MAPE_ACCEPTABLE_THRESHOLD = 50.0
+
 
 class PartWindow(QMainWindow):
     def __init__(self, part_id: int, part_name: str, parent=None) -> None:
@@ -209,11 +214,11 @@ class PartWindow(QMainWindow):
     def _describe_mape_quality(self, mape: float | None) -> str:
         if mape is None:
             return "Качество модели: MAPE не определён (нулевые фактические значения)."
-        if mape < 10:
+        if mape < MAPE_EXCELLENT_THRESHOLD:
             return "Качество модели: отличное."
-        if mape < 20:
+        if mape < MAPE_GOOD_THRESHOLD:
             return "Качество модели: хорошее."
-        if mape < 50:
+        if mape < MAPE_ACCEPTABLE_THRESHOLD:
             return "Качество модели: удовлетворительное."
         return "Качество модели: неудовлетворительное."
 

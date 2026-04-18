@@ -4,6 +4,7 @@ import json
 from dataclasses import dataclass
 
 import sympy as sp
+from sympy import SympifyError
 
 
 @dataclass(frozen=True)
@@ -28,7 +29,7 @@ def parse_lsq_formula(formula: str) -> ParsedLSQFormula:
 
     try:
         expr = sp.sympify(expr_text)
-    except Exception as e:  # pragma: no cover - тип ошибки зависит от sympy
+    except (SympifyError, SyntaxError, TypeError, ValueError) as e:
         raise ValueError(f"Не удалось разобрать формулу: {e}") from e
 
     symbol_names = {str(s) for s in expr.free_symbols}

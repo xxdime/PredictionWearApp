@@ -48,3 +48,22 @@ def test_formula_forecast_with_bounds() -> None:
     assert result.t_critical_lsq > 0
     assert result.mape is not None
     assert result.mape < 0.001
+
+
+def test_formula_forecast_respects_tight_bounds() -> None:
+    service = ForecastService()
+    x = [0.0, 10.0, 20.0, 30.0]
+    y = [10.0, 8.0, 6.0, 4.0]
+
+    result = service.compute(
+        operating_hours=x,
+        values=y,
+        critical_value=3.0,
+        lsq_model_type="formula",
+        lsq_model_formula="y = a * x + b",
+        lsq_param_bounds_json='{"a":[-0.1001,-0.0999],"b":[9.999,10.001]}',
+        confidence_k=1.5,
+    )
+
+    assert -0.1001 <= result.slope <= -0.0999
+    assert 9.999 <= result.intercept <= 10.001
