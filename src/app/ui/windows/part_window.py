@@ -85,16 +85,25 @@ class PartWindow(QMainWindow):
         center.addLayout(right, 0, 1)
 
         self.plot_widget = ForecastPlotWidget()
-        center.addWidget(self.plot_widget, 1, 0, 1, 2)
+        center.addWidget(self.plot_widget, 1, 0)
 
         self.lbl_current_param_forecast = QLabel(
             "Прогноз по выбранному параметру: нажмите 'Обновить график'."
         )
+        self.lbl_model_mape = QLabel("MAPE модели: будет рассчитан после обновления графика.")
+        self.lbl_model_quality = QLabel(
+            "Качество модели: будет рассчитано после обновления графика."
+        )
         self.lbl_earliest_forecast = QLabel(
             "Самый ранний критический параметр: будет рассчитан после обновления графика."
         )
-        root.addWidget(self.lbl_current_param_forecast)
-        root.addWidget(self.lbl_earliest_forecast)
+        info = QVBoxLayout()
+        info.addWidget(self.lbl_current_param_forecast)
+        info.addWidget(self.lbl_model_mape)
+        info.addWidget(self.lbl_model_quality)
+        info.addWidget(self.lbl_earliest_forecast)
+        info.addStretch()
+        center.addLayout(info, 1, 1)
 
         self.reload_parameters()
 
@@ -197,6 +206,17 @@ class PartWindow(QMainWindow):
         y = [m.value for m in ms]
         return x, y
 
+    def _describe_mape_quality(self, mape: float | None) -> str:
+        if mape is None:
+            return "Качество модели: MAPE не определён (нулевые фактические значения)."
+        if mape < 10:
+            return "Качество модели: отличное."
+        if mape < 20:
+            return "Качество модели: хорошее."
+        if mape < 50:
+            return "Качество модели: удовлетворительное."
+        return "Качество модели: неудовлетворительное."
+
     def on_refresh_plot(self) -> None:
         param = self._current_parameter()
         if param is None:
@@ -210,6 +230,8 @@ class PartWindow(QMainWindow):
             self.lbl_current_param_forecast.setText(
                 f"Прогноз по '{param.name}': недостаточно данных."
             )
+            self.lbl_model_mape.setText("MAPE модели: недостаточно данных.")
+            self.lbl_model_quality.setText("Качество модели: недостаточно данных.")
             return
 
         try:
@@ -222,20 +244,28 @@ class PartWindow(QMainWindow):
                 degradation_direction=param.degradation_direction,
                 lsq_model_type=cfg.lsq_model_type,
                 lsq_poly_degree=cfg.lsq_poly_degree,
-                gpr_kernel_type=cfg.gpr_kernel_type,
-                gpr_alpha=cfg.gpr_alpha,
-                gpr_confidence_level=cfg.gpr_confidence_level,
+                lsq_model_formula=cfg.lsq_model_formula,
+                lsq_param_bounds_json=cfg.lsq_param_bounds_json,
+                confidence_k=cfg.confidence_k,
             )
             self.plot_widget.draw(result, critical_value=param.critical_value)
 
             if result.t_critical_lsq is None:
-                msg = f"По параметру '{param.name}' время достижения критического значения не определено."
+                msg = (
+                    f"По параметру '{param.name}' время достижения "
+                    "критического значения не определено."
+                )
             else:
                 msg = (
                     f"По параметру '{param.name}' критическое значение будет достигнуто примерно "
                     f"на {result.t_critical_lsq:.2f} ч наработки (оценка МНК)."
                 )
             self.lbl_current_param_forecast.setText(msg)
+            if result.mape is None:
+                self.lbl_model_mape.setText("MAPE модели: не определён.")
+            else:
+                self.lbl_model_mape.setText(f"MAPE модели: {result.mape:.2f}%")
+            self.lbl_model_quality.setText(self._describe_mape_quality(result.mape))
 
             earliest_name: str | None = None
             earliest_t: float | None = None
@@ -253,9 +283,9 @@ class PartWindow(QMainWindow):
                     degradation_direction=p.degradation_direction,
                     lsq_model_type=pcfg.lsq_model_type,
                     lsq_poly_degree=pcfg.lsq_poly_degree,
-                    gpr_kernel_type=pcfg.gpr_kernel_type,
-                    gpr_alpha=pcfg.gpr_alpha,
-                    gpr_confidence_level=pcfg.gpr_confidence_level,
+                    lsq_model_formula=pcfg.lsq_model_formula,
+                    lsq_param_bounds_json=pcfg.lsq_param_bounds_json,
+                    confidence_k=pcfg.confidence_k,
                 )
                 if r.t_critical_lsq is None:
                     continue

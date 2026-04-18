@@ -30,6 +30,9 @@ class ForecastConfigRepository:
                 parameter_id=parameter_id,
                 lsq_model_type="linear",
                 lsq_poly_degree=1,
+                lsq_model_formula="",
+                lsq_param_bounds_json="{}",
+                confidence_k=2.0,
                 gpr_kernel_type="RBF",
                 gpr_alpha=1e-6,
                 gpr_confidence_level=0.95,
@@ -46,6 +49,9 @@ class ForecastConfigRepository:
         *,
         lsq_model_type: str,
         lsq_poly_degree: int,
+        lsq_model_formula: str,
+        lsq_param_bounds_json: str,
+        confidence_k: float,
         gpr_kernel_type: str,
         gpr_alpha: float,
         gpr_confidence_level: float,
@@ -62,6 +68,9 @@ class ForecastConfigRepository:
                     parameter_id=parameter_id,
                     lsq_model_type=lsq_model_type,
                     lsq_poly_degree=lsq_poly_degree,
+                    lsq_model_formula=lsq_model_formula,
+                    lsq_param_bounds_json=lsq_param_bounds_json,
+                    confidence_k=confidence_k,
                     gpr_kernel_type=gpr_kernel_type,
                     gpr_alpha=gpr_alpha,
                     gpr_confidence_level=gpr_confidence_level,
@@ -73,6 +82,9 @@ class ForecastConfigRepository:
 
             cfg.lsq_model_type = lsq_model_type
             cfg.lsq_poly_degree = int(lsq_poly_degree)
+            cfg.lsq_model_formula = lsq_model_formula
+            cfg.lsq_param_bounds_json = lsq_param_bounds_json
+            cfg.confidence_k = float(confidence_k)
             cfg.gpr_kernel_type = gpr_kernel_type
             cfg.gpr_alpha = float(gpr_alpha)
             cfg.gpr_confidence_level = float(gpr_confidence_level)

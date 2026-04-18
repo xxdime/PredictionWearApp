@@ -39,17 +39,14 @@ class ForecastPlotWidget(QWidget):
 
         self.plot.plot(
             result.x_grid,
-            result.y_gpr_mean,
+            result.y_centered,
             pen=pg.mkPen(style=pg.QtCore.Qt.DashLine),
-            name="GPR mean",
+            name="Центр (МНК - Bias)",
         )
 
-        upper = result.y_gpr_mean + result.confidence_z * result.y_gpr_std
-        lower = result.y_gpr_mean - result.confidence_z * result.y_gpr_std
-
         ci_brush = pg.mkBrush(100, 149, 237, 60)
-        ci_u = pg.PlotDataItem(result.x_grid, upper, pen=None)
-        ci_l = pg.PlotDataItem(result.x_grid, lower, pen=None)
+        ci_u = pg.PlotDataItem(result.x_grid, result.y_upper, pen=None)
+        ci_l = pg.PlotDataItem(result.x_grid, result.y_lower, pen=None)
         fill = pg.FillBetweenItem(ci_u, ci_l, brush=ci_brush)
         self.plot.addItem(ci_u)
         self.plot.addItem(ci_l)

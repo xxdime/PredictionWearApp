@@ -121,21 +121,28 @@ class TemplateParametersWindow(QMainWindow):
             self,
             lsq_model_type=cfg.lsq_model_type,
             lsq_poly_degree=cfg.lsq_poly_degree,
-            gpr_kernel_type=cfg.gpr_kernel_type,
-            gpr_alpha=cfg.gpr_alpha,
-            gpr_confidence_level=cfg.gpr_confidence_level,
+            lsq_model_formula=cfg.lsq_model_formula,
+            lsq_param_bounds_json=cfg.lsq_param_bounds_json,
+            confidence_k=cfg.confidence_k,
         )
         if dialog.exec():
-            lsq_model_type, lsq_poly_degree, gpr_kernel_type, gpr_alpha, gpr_confidence_level = (
-                dialog.get_data()
-            )
+            (
+                lsq_model_type,
+                lsq_poly_degree,
+                lsq_model_formula,
+                lsq_param_bounds_json,
+                confidence_k,
+            ) = dialog.get_data()
             self.forecast_cfg_repo.upsert(
                 self.template_id,
                 param.id,
                 lsq_model_type=lsq_model_type,
                 lsq_poly_degree=lsq_poly_degree,
-                gpr_kernel_type=gpr_kernel_type,
-                gpr_alpha=gpr_alpha,
-                gpr_confidence_level=gpr_confidence_level,
+                lsq_model_formula=lsq_model_formula,
+                lsq_param_bounds_json=lsq_param_bounds_json,
+                confidence_k=confidence_k,
+                gpr_kernel_type=cfg.gpr_kernel_type,
+                gpr_alpha=cfg.gpr_alpha,
+                gpr_confidence_level=cfg.gpr_confidence_level,
             )
             QMessageBox.information(self, "Настройки прогноза", "Сохранено.")
