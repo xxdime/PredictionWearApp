@@ -15,15 +15,17 @@ def test_linear_forecast_uses_bias_rmse_interval() -> None:
         operating_hours=x,
         values=y,
         critical_value=5.0,
-        lsq_model_type="linear",
+        lsq_model_type="formula",
+        lsq_model_formula="y = a * x + b",
+        lsq_param_bounds_json='{"a":[-1.0,0.0],"b":[0.0,20.0]}',
         confidence_k=2.0,
     )
 
     assert result.t_critical_lsq is not None
     assert result.t_critical_lsq == pytest.approx(50.0)
-    assert result.bias == pytest.approx(0.0)
-    assert result.rmse == pytest.approx(0.0)
-    assert result.mape == pytest.approx(0.0)
+    assert result.bias == pytest.approx(0.0, abs=1e-9)
+    assert result.rmse == pytest.approx(0.0, abs=1e-9)
+    assert result.mape == pytest.approx(0.0, abs=1e-6)
     assert np.allclose(result.y_centered, result.y_lsq)
     assert np.allclose(result.y_upper, result.y_centered)
     assert np.allclose(result.y_lower, result.y_centered)

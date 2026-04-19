@@ -28,7 +28,7 @@ class ForecastConfigRepository:
             cfg = ForecastConfig(
                 template_id=template_id,
                 parameter_id=parameter_id,
-                lsq_model_type="linear",
+                lsq_model_type="formula",
                 lsq_poly_degree=1,
                 lsq_model_formula="",
                 lsq_param_bounds_json="{}",

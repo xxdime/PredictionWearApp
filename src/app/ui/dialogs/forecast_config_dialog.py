@@ -1,14 +1,12 @@
 from __future__ import annotations
 
 from PySide6.QtWidgets import (
-    QComboBox,
     QDialog,
     QDialogButtonBox,
     QDoubleSpinBox,
     QFormLayout,
     QLineEdit,
     QMessageBox,
-    QSpinBox,
     QTableWidget,
     QTableWidgetItem,
 )
@@ -21,26 +19,17 @@ class ForecastConfigDialog(QDialog):
         self,
         parent=None,
         *,
-        lsq_model_type: str = "linear",
-        lsq_poly_degree: int = 1,
         lsq_model_formula: str = "",
         lsq_param_bounds_json: str = "{}",
         confidence_k: float = 2.0,
+        # Ignored legacy params kept for call-site compatibility.
+        lsq_model_type: str = "formula",
+        lsq_poly_degree: int = 1,
     ) -> None:
         super().__init__(parent)
         self.setWindowTitle("Настройки прогноза")
 
         layout = QFormLayout(self)
-
-        self.lsq_model_combo = QComboBox()
-        self.lsq_model_combo.addItems(["linear", "poly", "formula"])
-        self.lsq_model_combo.setCurrentText(
-            lsq_model_type if lsq_model_type in ("linear", "poly", "formula") else "linear"
-        )
-
-        self.lsq_degree_spin = QSpinBox()
-        self.lsq_degree_spin.setRange(1, 8)
-        self.lsq_degree_spin.setValue(int(lsq_poly_degree))
 
         self.formula_edit = QLineEdit()
         self.formula_edit.setPlaceholderText("y = a * x + b")
@@ -56,8 +45,6 @@ class ForecastConfigDialog(QDialog):
         self.k_spin.setSingleStep(0.1)
         self.k_spin.setValue(float(confidence_k))
 
-        layout.addRow("МНК модель:", self.lsq_model_combo)
-        layout.addRow("Степень poly:", self.lsq_degree_spin)
         layout.addRow("Формула МНК:", self.formula_edit)
         layout.addRow("Границы параметров:", self.bounds_table)
         layout.addRow("Коэффициент k (RMSE):", self.k_spin)
@@ -112,29 +99,28 @@ class ForecastConfigDialog(QDialog):
         return bounds
 
     def accept(self) -> None:
-        if self.lsq_model_combo.currentText() == "formula":
-            try:
-                parsed = parse_lsq_formula(self.formula_edit.text())
-            except ValueError as e:
-                QMessageBox.warning(self, "Формула МНК", str(e))
-                return
+        try:
+            parsed = parse_lsq_formula(self.formula_edit.text())
+        except ValueError as e:
+            QMessageBox.warning(self, "Формула МНК", str(e))
+            return
 
-            bounds = self._collect_bounds_from_table()
-            missing = [name for name in parsed.parameter_names if name not in bounds]
-            if missing:
-                QMessageBox.warning(
-                    self,
-                    "Границы параметров",
-                    f"Не заданы корректные границы для параметров: {', '.join(missing)}",
-                )
-                return
+        bounds = self._collect_bounds_from_table()
+        missing = [name for name in parsed.parameter_names if name not in bounds]
+        if missing:
+            QMessageBox.warning(
+                self,
+                "Границы параметров",
+                f"Не заданы корректные границы для параметров: {', '.join(missing)}",
+            )
+            return
         super().accept()
 
     def get_data(self) -> tuple[str, int, str, str, float]:
         bounds_json = bounds_to_json(self._collect_bounds_from_table())
         return (
-            self.lsq_model_combo.currentText(),
-            int(self.lsq_degree_spin.value()),
+            "formula",
+            1,
             self.formula_edit.text().strip(),
             bounds_json,
             float(self.k_spin.value()),

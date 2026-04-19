@@ -20,6 +20,7 @@ from app.infrastructure.db.repositories.forecast_config_repo import ForecastConf
 from app.infrastructure.db.repositories.measurement_repo import MeasurementRepository
 from app.infrastructure.db.repositories.part_repo import PartRepository
 from app.infrastructure.db.repositories.template_parameter_repo import TemplateParameterRepository
+from app.ui.dialogs.forecast_config_dialog import ForecastConfigDialog
 from app.ui.dialogs.measurement_dialog import MeasurementDialog
 from app.ui.widgets.forecast_plot_widget import ForecastPlotWidget
 
@@ -58,6 +59,9 @@ class PartWindow(QMainWindow):
         self.parameter_combo = QComboBox()
         self.parameter_combo.currentIndexChanged.connect(self.reload_measurements)
         top.addWidget(self.parameter_combo, 1)
+        self.btn_forecast_cfg = QPushButton("Настройки прогноза")
+        self.btn_forecast_cfg.clicked.connect(self.on_forecast_config)
+        top.addWidget(self.btn_forecast_cfg)
         root.addLayout(top)
 
         center = QGridLayout()
@@ -204,6 +208,44 @@ class PartWindow(QMainWindow):
                 self.reload_measurements()
             except Exception as e:
                 QMessageBox.critical(self, "Ошибка", f"Не удалось удалить измерение:\n{e}")
+
+    def on_forecast_config(self) -> None:
+        param = self._current_parameter()
+        if param is None:
+            QMessageBox.warning(self, "Настройки прогноза", "Нет выбранного параметра.")
+            return
+
+        cfg = self.forecast_config_repo.get_or_create_default(self._part.template_id, param.id)
+
+        dialog = ForecastConfigDialog(
+            self,
+            lsq_model_type=cfg.lsq_model_type,
+            lsq_poly_degree=cfg.lsq_poly_degree,
+            lsq_model_formula=cfg.lsq_model_formula,
+            lsq_param_bounds_json=cfg.lsq_param_bounds_json,
+            confidence_k=cfg.confidence_k,
+        )
+        if dialog.exec():
+            (
+                lsq_model_type,
+                lsq_poly_degree,
+                lsq_model_formula,
+                lsq_param_bounds_json,
+                confidence_k,
+            ) = dialog.get_data()
+            self.forecast_config_repo.upsert(
+                self._part.template_id,
+                param.id,
+                lsq_model_type=lsq_model_type,
+                lsq_poly_degree=lsq_poly_degree,
+                lsq_model_formula=lsq_model_formula,
+                lsq_param_bounds_json=lsq_param_bounds_json,
+                confidence_k=confidence_k,
+                gpr_kernel_type=cfg.gpr_kernel_type,
+                gpr_alpha=cfg.gpr_alpha,
+                gpr_confidence_level=cfg.gpr_confidence_level,
+            )
+            QMessageBox.information(self, "Настройки прогноза", "Сохранено.")
 
     def _collect_points(self, parameter_id: int) -> tuple[list[float], list[float]]:
         ms = list(self.measurement_repo.list_by_part_and_parameter(self.part_id, parameter_id))
