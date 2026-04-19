@@ -141,21 +141,28 @@ class ForecastService:
                 maxfev=20000,
             )
 
-            right = x_max + span * horizon_extra
-            x_grid = np.linspace(x_min, right, 300)
-            y_lsq = wrapped_formula(x_grid, *popt)
             y_train_pred = wrapped_formula(x, *popt)
 
+            # Search for the critical crossing on a wide horizon first so that
+            # the display grid is always extended to reach the critical value,
+            # mirroring the behaviour of the linear/poly branches.
+            right_search = x_max + span * 20.0
+            x_search = np.linspace(x_min, right_search, 3000)
+            y_search = wrapped_formula(x_search, *popt)
+            t_critical_lsq = self._critical_time_from_curve(
+                x_search, y_search, critical_value, degradation_direction
+            )
+
+            right = x_max + span * horizon_extra
+            if t_critical_lsq is not None and t_critical_lsq > right:
+                right = t_critical_lsq * 1.05
+
+            x_grid = np.linspace(x_min, right, 300)
+            y_lsq = wrapped_formula(x_grid, *popt)
+            # Recompute on the final grid for a precise crossing point.
             t_critical_lsq = self._critical_time_from_curve(
                 x_grid, y_lsq, critical_value, degradation_direction
             )
-            if t_critical_lsq is not None and t_critical_lsq > right:
-                right = t_critical_lsq * 1.05
-                x_grid = np.linspace(x_min, right, 300)
-                y_lsq = wrapped_formula(x_grid, *popt)
-                t_critical_lsq = self._critical_time_from_curve(
-                    x_grid, y_lsq, critical_value, degradation_direction
-                )
 
             if len(x) >= 2:
                 slope = float((y_train_pred[-1] - y_train_pred[-2]) / (x[-1] - x[-2]))
