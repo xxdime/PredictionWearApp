@@ -119,16 +119,12 @@ class TemplateParametersWindow(QMainWindow):
 
         dialog = ForecastConfigDialog(
             self,
-            lsq_model_type=cfg.lsq_model_type,
-            lsq_poly_degree=cfg.lsq_poly_degree,
             lsq_model_formula=cfg.lsq_model_formula,
             lsq_param_bounds_json=cfg.lsq_param_bounds_json,
             confidence_k=cfg.confidence_k,
         )
         if dialog.exec():
             (
-                lsq_model_type,
-                lsq_poly_degree,
                 lsq_model_formula,
                 lsq_param_bounds_json,
                 confidence_k,
@@ -136,8 +132,6 @@ class TemplateParametersWindow(QMainWindow):
             self.forecast_cfg_repo.upsert(
                 self.template_id,
                 param.id,
-                lsq_model_type=lsq_model_type,
-                lsq_poly_degree=lsq_poly_degree,
                 lsq_model_formula=lsq_model_formula,
                 lsq_param_bounds_json=lsq_param_bounds_json,
                 confidence_k=confidence_k,

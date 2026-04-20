@@ -22,9 +22,6 @@ class ForecastConfigDialog(QDialog):
         lsq_model_formula: str = "",
         lsq_param_bounds_json: str = "{}",
         confidence_k: float = 2.0,
-        # Ignored legacy params kept for call-site compatibility.
-        lsq_model_type: str = "formula",
-        lsq_poly_degree: int = 1,
     ) -> None:
         super().__init__(parent)
         self.setWindowTitle("Настройки прогноза")
@@ -116,11 +113,9 @@ class ForecastConfigDialog(QDialog):
             return
         super().accept()
 
-    def get_data(self) -> tuple[str, int, str, str, float]:
+    def get_data(self) -> tuple[str, str, float]:
         bounds_json = bounds_to_json(self._collect_bounds_from_table())
         return (
-            "formula",
-            1,
             self.formula_edit.text().strip(),
             bounds_json,
             float(self.k_spin.value()),

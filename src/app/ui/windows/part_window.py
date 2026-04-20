@@ -219,16 +219,12 @@ class PartWindow(QMainWindow):
 
         dialog = ForecastConfigDialog(
             self,
-            lsq_model_type=cfg.lsq_model_type,
-            lsq_poly_degree=cfg.lsq_poly_degree,
             lsq_model_formula=cfg.lsq_model_formula,
             lsq_param_bounds_json=cfg.lsq_param_bounds_json,
             confidence_k=cfg.confidence_k,
         )
         if dialog.exec():
             (
-                lsq_model_type,
-                lsq_poly_degree,
                 lsq_model_formula,
                 lsq_param_bounds_json,
                 confidence_k,
@@ -236,8 +232,6 @@ class PartWindow(QMainWindow):
             self.forecast_config_repo.upsert(
                 self._part.template_id,
                 param.id,
-                lsq_model_type=lsq_model_type,
-                lsq_poly_degree=lsq_poly_degree,
                 lsq_model_formula=lsq_model_formula,
                 lsq_param_bounds_json=lsq_param_bounds_json,
                 confidence_k=confidence_k,
@@ -289,8 +283,6 @@ class PartWindow(QMainWindow):
                 values=y,
                 critical_value=param.critical_value,
                 degradation_direction=param.degradation_direction,
-                lsq_model_type=cfg.lsq_model_type,
-                lsq_poly_degree=cfg.lsq_poly_degree,
                 lsq_model_formula=cfg.lsq_model_formula,
                 lsq_param_bounds_json=cfg.lsq_param_bounds_json,
                 confidence_k=cfg.confidence_k,
@@ -303,10 +295,21 @@ class PartWindow(QMainWindow):
                     "критического значения не определено."
                 )
             else:
-                msg = (
-                    f"По параметру '{param.name}' критическое значение будет достигнуто примерно "
-                    f"на {result.t_critical_lsq:.2f} ч наработки (оценка МНК)."
-                )
+                t_low = result.t_critical_lower
+                t_high = result.t_critical_upper
+                if t_low is not None and t_high is not None:
+                    t_early = min(t_low, t_high)
+                    t_late = max(t_low, t_high)
+                    msg = (
+                        f"По параметру '{param.name}' критическое значение ожидается на "
+                        f"~{result.t_critical_lsq:.2f} ч (оценка МНК); "
+                        f"интервал: от {t_early:.2f} до {t_late:.2f} ч."
+                    )
+                else:
+                    msg = (
+                        f"По параметру '{param.name}' критическое значение будет достигнуто "
+                        f"примерно на {result.t_critical_lsq:.2f} ч наработки (оценка МНК)."
+                    )
             self.lbl_current_param_forecast.setText(msg)
             if result.mape is None:
                 self.lbl_model_mape.setText("MAPE модели: не определён.")
@@ -328,8 +331,6 @@ class PartWindow(QMainWindow):
                     py,
                     p.critical_value,
                     degradation_direction=p.degradation_direction,
-                    lsq_model_type=pcfg.lsq_model_type,
-                    lsq_poly_degree=pcfg.lsq_poly_degree,
                     lsq_model_formula=pcfg.lsq_model_formula,
                     lsq_param_bounds_json=pcfg.lsq_param_bounds_json,
                     confidence_k=pcfg.confidence_k,

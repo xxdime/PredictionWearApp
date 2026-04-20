@@ -28,8 +28,6 @@ class ForecastConfigRepository:
             cfg = ForecastConfig(
                 template_id=template_id,
                 parameter_id=parameter_id,
-                lsq_model_type="formula",
-                lsq_poly_degree=1,
                 lsq_model_formula="",
                 lsq_param_bounds_json="{}",
                 confidence_k=2.0,
@@ -47,8 +45,6 @@ class ForecastConfigRepository:
         template_id: int,
         parameter_id: int,
         *,
-        lsq_model_type: str,
-        lsq_poly_degree: int,
         lsq_model_formula: str,
         lsq_param_bounds_json: str,
         confidence_k: float,
@@ -66,8 +62,6 @@ class ForecastConfigRepository:
                 cfg = ForecastConfig(
                     template_id=template_id,
                     parameter_id=parameter_id,
-                    lsq_model_type=lsq_model_type,
-                    lsq_poly_degree=lsq_poly_degree,
                     lsq_model_formula=lsq_model_formula,
                     lsq_param_bounds_json=lsq_param_bounds_json,
                     confidence_k=confidence_k,
@@ -80,8 +74,6 @@ class ForecastConfigRepository:
                 session.refresh(cfg)
                 return cfg
 
-            cfg.lsq_model_type = lsq_model_type
-            cfg.lsq_poly_degree = int(lsq_poly_degree)
             cfg.lsq_model_formula = lsq_model_formula
             cfg.lsq_param_bounds_json = lsq_param_bounds_json
             cfg.confidence_k = float(confidence_k)

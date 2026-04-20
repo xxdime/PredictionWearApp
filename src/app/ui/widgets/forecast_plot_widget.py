@@ -59,12 +59,35 @@ class ForecastPlotWidget(QWidget):
         )
         self.plot.addItem(crit_line)
 
+        # X mark where the centered line crosses the critical value.
         if result.t_critical_lsq is not None:
             self.plot.plot(
                 [result.t_critical_lsq],
                 [critical_value],
                 pen=None,
                 symbol="x",
-                symbolSize=12,
-                name="Крит. точка",
+                symbolSize=14,
+                symbolPen=pg.mkPen("r", width=2),
+                name="Крит. точка (центр)",
             )
+
+        # Dashed vertical lines for the confidence interval of the critical time.
+        if result.t_critical_lower is not None:
+            line_lower = pg.InfiniteLine(
+                pos=result.t_critical_lower,
+                angle=90,
+                pen=pg.mkPen("m", width=1, style=pg.QtCore.Qt.DashLine),
+                label=f"t_нижн≈{result.t_critical_lower:.1f}",
+                labelOpts={"position": 0.85, "color": "m"},
+            )
+            self.plot.addItem(line_lower)
+
+        if result.t_critical_upper is not None:
+            line_upper = pg.InfiniteLine(
+                pos=result.t_critical_upper,
+                angle=90,
+                pen=pg.mkPen("g", width=1, style=pg.QtCore.Qt.DashLine),
+                label=f"t_верхн≈{result.t_critical_upper:.1f}",
+                labelOpts={"position": 0.85, "color": "g"},
+            )
+            self.plot.addItem(line_upper)

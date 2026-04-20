@@ -102,8 +102,6 @@ class ForecastConfig(Base):
         ForeignKey("template_parameters.id", ondelete="CASCADE"), nullable=False
     )
 
-    lsq_model_type: Mapped[str] = mapped_column(String(32), default="linear", nullable=False)
-    lsq_poly_degree: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
     lsq_model_formula: Mapped[str] = mapped_column(Text, default="", nullable=False)
     lsq_param_bounds_json: Mapped[str] = mapped_column(Text, default="{}", nullable=False)
     confidence_k: Mapped[float] = mapped_column(Float, default=2.0, nullable=False)

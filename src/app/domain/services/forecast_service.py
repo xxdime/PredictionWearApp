@@ -27,32 +27,11 @@ class ForecastResult:
     slope: float
     intercept: float
     t_critical_lsq: float | None
+    t_critical_lower: float | None
+    t_critical_upper: float | None
 
 
 class ForecastService:
-    def _critical_time(
-        self,
-        slope: float,
-        intercept: float,
-        critical_value: float,
-        x_min: float,
-        degradation_direction: str,
-    ) -> float | None:
-        if abs(slope) < 1e-12:
-            return None
-
-        if degradation_direction == "decrease_to_critical":
-            if slope >= 0:
-                return None
-        elif degradation_direction == "increase_to_critical":
-            if slope <= 0:
-                return None
-
-        t = float((critical_value - intercept) / slope)
-        if t < x_min:
-            return None
-        return t
-
     def _critical_time_from_curve(
         self,
         x_grid: np.ndarray,
@@ -87,8 +66,6 @@ class ForecastService:
         critical_value: float,
         *,
         degradation_direction: str = "decrease_to_critical",
-        lsq_model_type: str = "linear",
-        lsq_poly_degree: int = 1,
         lsq_model_formula: str = "",
         lsq_param_bounds_json: str | None = None,
         confidence_k: float = 2.0,
@@ -106,102 +83,47 @@ class ForecastService:
         x_min, x_max = float(x.min()), float(x.max())
         span = max(1.0, x_max - x_min)
 
-        if lsq_model_type == "formula":
-            parsed = parse_lsq_formula(lsq_model_formula)
-            x_symbol = sp.Symbol("x")
-            param_symbols = [sp.Symbol(name) for name in parsed.parameter_names]
-            model_fn = sp.lambdify((x_symbol, *param_symbols), parsed.expression, modules="numpy")
+        parsed = parse_lsq_formula(lsq_model_formula)
+        x_symbol = sp.Symbol("x")
+        param_symbols = [sp.Symbol(name) for name in parsed.parameter_names]
+        model_fn = sp.lambdify((x_symbol, *param_symbols), parsed.expression, modules="numpy")
 
-            bounds_map = bounds_from_json(lsq_param_bounds_json)
-            lower: list[float] = []
-            upper: list[float] = []
-            p0: list[float] = []
-            for param_name in parsed.parameter_names:
-                low, high = bounds_map.get(
-                    param_name, (DEFAULT_FORMULA_BOUND_LOW, DEFAULT_FORMULA_BOUND_HIGH)
-                )
-                lower.append(float(low))
-                upper.append(float(high))
-                p0.append(float((low + high) / 2.0))
-
-            def wrapped_formula(x_data: np.ndarray, *params: float) -> np.ndarray:
-                try:
-                    return np.asarray(model_fn(x_data, *params), dtype=float)
-                except (TypeError, ValueError) as e:
-                    raise ValueError(
-                        "Формула МНК должна возвращать числовые значения для заданных параметров."
-                    ) from e
-
-            popt, _ = curve_fit(
-                wrapped_formula,
-                x,
-                y,
-                p0=p0,
-                bounds=(lower, upper),
-                maxfev=20000,
+        bounds_map = bounds_from_json(lsq_param_bounds_json)
+        lower: list[float] = []
+        upper: list[float] = []
+        p0: list[float] = []
+        for param_name in parsed.parameter_names:
+            low, high = bounds_map.get(
+                param_name, (DEFAULT_FORMULA_BOUND_LOW, DEFAULT_FORMULA_BOUND_HIGH)
             )
+            lower.append(float(low))
+            upper.append(float(high))
+            p0.append(float((low + high) / 2.0))
 
-            y_train_pred = wrapped_formula(x, *popt)
+        def wrapped_formula(x_data: np.ndarray, *params: float) -> np.ndarray:
+            try:
+                return np.asarray(model_fn(x_data, *params), dtype=float)
+            except (TypeError, ValueError) as e:
+                raise ValueError(
+                    "Формула МНК должна возвращать числовые значения для заданных параметров."
+                ) from e
 
-            # Search for the critical crossing on a wide horizon first so that
-            # the display grid is always extended to reach the critical value,
-            # mirroring the behaviour of the linear/poly branches.
-            right_search = x_max + span * 20.0
-            x_search = np.linspace(x_min, right_search, 3000)
-            y_search = wrapped_formula(x_search, *popt)
-            t_critical_lsq = self._critical_time_from_curve(
-                x_search, y_search, critical_value, degradation_direction
-            )
+        popt, _ = curve_fit(
+            wrapped_formula,
+            x,
+            y,
+            p0=p0,
+            bounds=(lower, upper),
+            maxfev=20000,
+        )
 
-            right = x_max + span * horizon_extra
-            if t_critical_lsq is not None and t_critical_lsq > right:
-                right = t_critical_lsq * 1.05
+        y_train_pred = wrapped_formula(x, *popt)
 
-            x_grid = np.linspace(x_min, right, 300)
-            y_lsq = wrapped_formula(x_grid, *popt)
-            # Recompute on the final grid for a precise crossing point.
-            t_critical_lsq = self._critical_time_from_curve(
-                x_grid, y_lsq, critical_value, degradation_direction
-            )
-
-            if len(x) >= 2:
-                slope = float((y_train_pred[-1] - y_train_pred[-2]) / (x[-1] - x[-2]))
-            else:
-                slope = 0.0
-            intercept = float(y_train_pred[-1] - slope * x[-1])
-        elif lsq_model_type == "poly":
-            degree = max(1, int(lsq_poly_degree))
-            coeffs = np.polyfit(x, y, deg=degree)
-            poly = np.poly1d(coeffs)
-
-            slope = float(np.polyder(poly)(x_max))
-            intercept = float(poly(x_max) - slope * x_max)
-
-            t_critical_lsq = self._critical_time(
-                slope, intercept, critical_value, x_min, degradation_direction
-            )
-            right = x_max + span * horizon_extra
-            if t_critical_lsq is not None and t_critical_lsq > right:
-                right = t_critical_lsq * 1.05
-
-            x_grid = np.linspace(x_min, right, 300)
-            y_lsq = poly(x_grid)
-            y_train_pred = poly(x)
+        if len(x) >= 2:
+            slope = float((y_train_pred[-1] - y_train_pred[-2]) / (x[-1] - x[-2]))
         else:
-            slope, intercept = np.polyfit(x, y, deg=1)
-            slope = float(slope)
-            intercept = float(intercept)
-
-            t_critical_lsq = self._critical_time(
-                slope, intercept, critical_value, x_min, degradation_direction
-            )
-            right = x_max + span * horizon_extra
-            if t_critical_lsq is not None and t_critical_lsq > right:
-                right = t_critical_lsq * 1.05
-
-            x_grid = np.linspace(x_min, right, 300)
-            y_lsq = slope * x_grid + intercept
-            y_train_pred = slope * x + intercept
+            slope = 0.0
+        intercept = float(y_train_pred[-1] - slope * x[-1])
 
         residuals = y - np.asarray(y_train_pred, dtype=float)
         bias = float(np.mean(residuals))
@@ -216,9 +138,47 @@ class ForecastService:
             mape = None
 
         k = max(0.0, float(confidence_k))
+
+        # Search on a wide horizon to find critical crossings for all three bands.
+        right_search = x_max + span * 20.0
+        x_search = np.linspace(x_min, right_search, 3000)
+        y_search = wrapped_formula(x_search, *popt)
+        y_centered_search = y_search - bias
+        y_upper_search = y_centered_search + k * rmse
+        y_lower_search = y_centered_search - k * rmse
+
+        t_critical_lsq = self._critical_time_from_curve(
+            x_search, y_centered_search, critical_value, degradation_direction
+        )
+        t_critical_upper = self._critical_time_from_curve(
+            x_search, y_upper_search, critical_value, degradation_direction
+        )
+        t_critical_lower = self._critical_time_from_curve(
+            x_search, y_lower_search, critical_value, degradation_direction
+        )
+
+        # Extend the display grid to include all crossings.
+        right = x_max + span * horizon_extra
+        for t in (t_critical_lsq, t_critical_upper, t_critical_lower):
+            if t is not None and t > right:
+                right = t * 1.05
+
+        x_grid = np.linspace(x_min, right, 300)
+        y_lsq = wrapped_formula(x_grid, *popt)
         y_centered = np.asarray(y_lsq, dtype=float) - bias
         y_upper = y_centered + k * rmse
         y_lower = y_centered - k * rmse
+
+        # Recompute crossings on the final display grid for precision.
+        t_critical_lsq = self._critical_time_from_curve(
+            x_grid, y_centered, critical_value, degradation_direction
+        )
+        t_critical_upper = self._critical_time_from_curve(
+            x_grid, y_upper, critical_value, degradation_direction
+        )
+        t_critical_lower = self._critical_time_from_curve(
+            x_grid, y_lower, critical_value, degradation_direction
+        )
 
         return ForecastResult(
             x_train=x,
@@ -234,4 +194,7 @@ class ForecastService:
             slope=slope,
             intercept=intercept,
             t_critical_lsq=t_critical_lsq,
+            t_critical_lower=t_critical_lower,
+            t_critical_upper=t_critical_upper,
         )
+
