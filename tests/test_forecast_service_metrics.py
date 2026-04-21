@@ -72,7 +72,7 @@ def test_formula_forecast_respects_tight_bounds() -> None:
 
 
 def test_critical_interval_bounds_ordered() -> None:
-    """Lower bound crosses critical sooner, upper bound later (decrease_to_critical)."""
+    """Lower bound crosses critical sooner, upper bound later."""
     service = ForecastService()
     x = [0.0, 10.0, 20.0, 30.0]
     # Introduce noise so bias/rmse > 0.
@@ -85,7 +85,6 @@ def test_critical_interval_bounds_ordered() -> None:
         lsq_model_formula="y = a * x + b",
         lsq_param_bounds_json='{"a":[-1.0,0.0],"b":[0.0,20.0]}',
         confidence_k=2.0,
-        degradation_direction="decrease_to_critical",
     )
 
     assert result.t_critical_lsq is not None

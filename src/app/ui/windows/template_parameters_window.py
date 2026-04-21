@@ -33,8 +33,8 @@ class TemplateParametersWindow(QMainWindow):
 
         root = QHBoxLayout(central)
 
-        self.table = QTableWidget(0, 4)
-        self.table.setHorizontalHeaderLabels(["Название", "Ед. изм.", "Критическое", "Направление"])
+        self.table = QTableWidget(0, 3)
+        self.table.setHorizontalHeaderLabels(["Название", "Ед. изм.", "Критическое"])
         root.addWidget(self.table, 3)
 
         right = QVBoxLayout()
@@ -68,7 +68,6 @@ class TemplateParametersWindow(QMainWindow):
             self.table.setItem(row, 0, QTableWidgetItem(p.name))
             self.table.setItem(row, 1, QTableWidgetItem(p.unit))
             self.table.setItem(row, 2, QTableWidgetItem(str(p.critical_value)))
-            self.table.setItem(row, 3, QTableWidgetItem(p.degradation_direction))
 
     def _selected_param(self) -> TemplateParameter | None:
         row = self.table.currentRow()
@@ -79,8 +78,8 @@ class TemplateParametersWindow(QMainWindow):
     def on_add(self) -> None:
         dialog = ParameterDialog(self)
         if dialog.exec():
-            name, unit, crit, direction = dialog.get_data()
-            self.repo.create(self.template_id, name, unit, crit, direction)
+            name, unit, crit = dialog.get_data()
+            self.repo.create(self.template_id, name, unit, crit)
             self.reload()
 
     def on_edit(self) -> None:
@@ -93,11 +92,10 @@ class TemplateParametersWindow(QMainWindow):
             name=param.name,
             unit=param.unit,
             critical_value=param.critical_value,
-            direction=param.degradation_direction,
         )
         if dialog.exec():
-            name, unit, crit, direction = dialog.get_data()
-            self.repo.update(param.id, name, unit, crit, direction)
+            name, unit, crit = dialog.get_data()
+            self.repo.update(param.id, name, unit, crit)
             self.reload()
 
     def on_delete(self) -> None:
@@ -135,8 +133,5 @@ class TemplateParametersWindow(QMainWindow):
                 lsq_model_formula=lsq_model_formula,
                 lsq_param_bounds_json=lsq_param_bounds_json,
                 confidence_k=confidence_k,
-                gpr_kernel_type=cfg.gpr_kernel_type,
-                gpr_alpha=cfg.gpr_alpha,
-                gpr_confidence_level=cfg.gpr_confidence_level,
             )
             QMessageBox.information(self, "Настройки прогноза", "Сохранено.")

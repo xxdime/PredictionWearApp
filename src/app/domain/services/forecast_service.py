@@ -37,17 +37,13 @@ class ForecastService:
         x_grid: np.ndarray,
         y_grid: np.ndarray,
         critical_value: float,
-        degradation_direction: str,
     ) -> float | None:
         diff = y_grid - float(critical_value)
         if np.any(np.isclose(diff, 0.0, atol=1e-9)):
             idx = int(np.where(np.isclose(diff, 0.0, atol=1e-9))[0][0])
             return float(x_grid[idx])
 
-        if degradation_direction == "decrease_to_critical":
-            crossing_idx = np.where((diff[:-1] > 0) & (diff[1:] < 0))[0]
-        else:
-            crossing_idx = np.where((diff[:-1] < 0) & (diff[1:] > 0))[0]
+        crossing_idx = np.where(diff[:-1] * diff[1:] < 0)[0]
 
         if len(crossing_idx) == 0:
             return None
@@ -65,7 +61,6 @@ class ForecastService:
         values: list[float],
         critical_value: float,
         *,
-        degradation_direction: str = "decrease_to_critical",
         lsq_model_formula: str = "",
         lsq_param_bounds_json: str | None = None,
         confidence_k: float = 2.0,
@@ -148,13 +143,13 @@ class ForecastService:
         y_lower_search = y_centered_search - k * rmse
 
         t_critical_lsq = self._critical_time_from_curve(
-            x_search, y_centered_search, critical_value, degradation_direction
+            x_search, y_centered_search, critical_value
         )
         t_critical_upper = self._critical_time_from_curve(
-            x_search, y_upper_search, critical_value, degradation_direction
+            x_search, y_upper_search, critical_value
         )
         t_critical_lower = self._critical_time_from_curve(
-            x_search, y_lower_search, critical_value, degradation_direction
+            x_search, y_lower_search, critical_value
         )
 
         # Extend the display grid to include all crossings.
@@ -171,13 +166,13 @@ class ForecastService:
 
         # Recompute crossings on the final display grid for precision.
         t_critical_lsq = self._critical_time_from_curve(
-            x_grid, y_centered, critical_value, degradation_direction
+            x_grid, y_centered, critical_value
         )
         t_critical_upper = self._critical_time_from_curve(
-            x_grid, y_upper, critical_value, degradation_direction
+            x_grid, y_upper, critical_value
         )
         t_critical_lower = self._critical_time_from_curve(
-            x_grid, y_lower, critical_value, degradation_direction
+            x_grid, y_lower, critical_value
         )
 
         return ForecastResult(

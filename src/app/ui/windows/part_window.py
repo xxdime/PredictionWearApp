@@ -235,9 +235,6 @@ class PartWindow(QMainWindow):
                 lsq_model_formula=lsq_model_formula,
                 lsq_param_bounds_json=lsq_param_bounds_json,
                 confidence_k=confidence_k,
-                gpr_kernel_type=cfg.gpr_kernel_type,
-                gpr_alpha=cfg.gpr_alpha,
-                gpr_confidence_level=cfg.gpr_confidence_level,
             )
             QMessageBox.information(self, "Настройки прогноза", "Сохранено.")
 
@@ -282,7 +279,6 @@ class PartWindow(QMainWindow):
                 operating_hours=x,
                 values=y,
                 critical_value=param.critical_value,
-                degradation_direction=param.degradation_direction,
                 lsq_model_formula=cfg.lsq_model_formula,
                 lsq_param_bounds_json=cfg.lsq_param_bounds_json,
                 confidence_k=cfg.confidence_k,
@@ -330,7 +326,6 @@ class PartWindow(QMainWindow):
                     px,
                     py,
                     p.critical_value,
-                    degradation_direction=p.degradation_direction,
                     lsq_model_formula=pcfg.lsq_model_formula,
                     lsq_param_bounds_json=pcfg.lsq_param_bounds_json,
                     confidence_k=pcfg.confidence_k,
