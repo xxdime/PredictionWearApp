@@ -71,6 +71,39 @@ def test_formula_forecast_respects_tight_bounds() -> None:
     assert 9.999 <= result.intercept <= 10.001
 
 
+def test_power_law_formula_fits_without_bounds() -> None:
+    """Power-law formula y=h+k*x**n should converge even without user-specified bounds.
+
+    Previously, p0=(0,0,0) caused x**0=1 everywhere → degenerate Jacobian → optimizer
+    overflow and useless fit.  With the fixed p0=1 fallback the fit should be tight.
+    """
+    import math
+
+    service = ForecastService()
+    # Ground truth: h=10, k=-8, n=0.5 (square-root wear curve)
+    h_true, k_true, n_true = 10.0, -8.0, 0.5
+    x = [0.0, 1.0, 4.0, 9.0, 16.0]
+    y = [h_true + k_true * xi**n_true for xi in x]  # [10, 2, -6, -14, -22]
+
+    result = service.compute(
+        operating_hours=x,
+        values=y,
+        critical_value=-5.0,
+        lsq_model_formula="y = h + k * x**n",
+        # No tight bounds — uses defaults; previously this caused overflow & bad MAPE.
+        lsq_param_bounds_json='{"h":[-100,100],"k":[-100,100],"n":[0.01,5.0]}',
+        confidence_k=2.0,
+    )
+
+    assert result.mape is not None
+    assert result.mape < 1.0, f"MAPE too high for power-law fit: {result.mape:.2f}%"
+    assert result.t_critical_lsq is not None
+    # Exact crossing: h + k*t**n = -5  → t = ((-5-10)/(-8))^2 = 3.515625
+    expected_t = ((-5.0 - h_true) / k_true) ** (1.0 / n_true)
+    assert result.t_critical_lsq == pytest.approx(expected_t, rel=0.01)
+    assert not math.isnan(result.mape)
+
+
 def test_critical_interval_bounds_ordered() -> None:
     """Lower bound crosses critical sooner, upper bound later."""
     service = ForecastService()

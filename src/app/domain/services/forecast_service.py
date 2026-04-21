@@ -38,12 +38,22 @@ class ForecastService:
         y_grid: np.ndarray,
         critical_value: float,
     ) -> float | None:
+        # Drop non-finite points (can arise from power-law blow-up on wide search grids).
+        finite_mask = np.isfinite(y_grid)
+        if not np.all(finite_mask):
+            x_grid = x_grid[finite_mask]
+            y_grid = y_grid[finite_mask]
+            if len(x_grid) < 2:
+                return None
+
         diff = y_grid - float(critical_value)
         if np.any(np.isclose(diff, 0.0, atol=1e-9)):
             idx = int(np.where(np.isclose(diff, 0.0, atol=1e-9))[0][0])
             return float(x_grid[idx])
 
-        crossing_idx = np.where(diff[:-1] * diff[1:] < 0)[0]
+        # Use sign-change detection: overflow-safe (avoids diff[i]*diff[i+1] multiplication).
+        s = np.sign(diff)
+        crossing_idx = np.where((s[:-1] != 0) & (s[1:] != 0) & (s[:-1] != s[1:]))[0]
 
         if len(crossing_idx) == 0:
             return None
@@ -93,7 +103,15 @@ class ForecastService:
             )
             lower.append(float(low))
             upper.append(float(high))
-            p0.append(float((low + high) / 2.0))
+            mid = (low + high) / 2.0
+            if abs(mid) < 1.0:
+                # Midpoint is near zero — a degenerate starting point for many nonlinear
+                # models (e.g. x**n with n=0 collapses to a constant).  Pick the closest
+                # non-zero candidate that still lies inside the bounds.
+                candidate = 1.0 if high >= 1.0 else (-1.0 if low <= -1.0 else mid)
+                p0.append(float(candidate))
+            else:
+                p0.append(float(mid))
 
         def wrapped_formula(x_data: np.ndarray, *params: float) -> np.ndarray:
             try:
