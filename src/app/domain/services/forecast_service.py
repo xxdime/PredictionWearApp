@@ -104,7 +104,12 @@ class ForecastService:
             lower.append(float(low))
             upper.append(float(high))
             mid = (low + high) / 2.0
-            if abs(mid) < 1.0:
+            if low > 0 and high > 0:
+                # Both bounds are strictly positive: use geometric mean so that wide
+                # ranges like n=[1,100] start at sqrt(100)=10 rather than 50.5.
+                # This prevents x**50 style overflow in the Jacobian during fitting.
+                p0.append(float(np.sqrt(low * high)))
+            elif abs(mid) < 1e-6:
                 # Midpoint is near zero — a degenerate starting point for many nonlinear
                 # models (e.g. x**n with n=0 collapses to a constant).  Pick the closest
                 # non-zero candidate that still lies inside the bounds.
@@ -115,7 +120,12 @@ class ForecastService:
 
         def wrapped_formula(x_data: np.ndarray, *params: float) -> np.ndarray:
             try:
-                return np.asarray(model_fn(x_data, *params), dtype=float)
+                with np.errstate(over="ignore", invalid="ignore"):
+                    result = np.asarray(model_fn(x_data, *params), dtype=float)
+                # Replace inf/nan with a large finite penalty so the optimizer can
+                # compute a gradient and step back toward a feasible region.
+                result = np.nan_to_num(result, nan=1e100, posinf=1e100, neginf=-1e100)
+                return result
             except (TypeError, ValueError) as e:
                 raise ValueError(
                     "Формула МНК должна возвращать числовые значения для заданных параметров."
