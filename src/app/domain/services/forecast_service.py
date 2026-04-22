@@ -38,7 +38,6 @@ class ForecastService:
         y_grid: np.ndarray,
         critical_value: float,
     ) -> float | None:
-        # Drop non-finite points (can arise from power-law blow-up on wide search grids).
         finite_mask = np.isfinite(y_grid)
         if not np.all(finite_mask):
             x_grid = x_grid[finite_mask]
@@ -51,7 +50,6 @@ class ForecastService:
             idx = int(np.where(np.isclose(diff, 0.0, atol=1e-9))[0][0])
             return float(x_grid[idx])
 
-        # Use sign-change detection: overflow-safe (avoids diff[i]*diff[i+1] multiplication).
         s = np.sign(diff)
         crossing_idx = np.where((s[:-1] != 0) & (s[1:] != 0) & (s[:-1] != s[1:]))[0]
 
@@ -105,14 +103,8 @@ class ForecastService:
             upper.append(float(high))
             mid = (low + high) / 2.0
             if low > 0 and high > 0:
-                # Both bounds are strictly positive: use geometric mean so that wide
-                # ranges like n=[1,100] start at sqrt(100)=10 rather than 50.5.
-                # This prevents x**50 style overflow in the Jacobian during fitting.
                 p0.append(float(np.sqrt(low * high)))
             elif abs(mid) < 1e-6:
-                # Midpoint is near zero — a degenerate starting point for many nonlinear
-                # models (e.g. x**n with n=0 collapses to a constant).  Pick the closest
-                # non-zero candidate that still lies inside the bounds.
                 candidate = 1.0 if high >= 1.0 else (-1.0 if low <= -1.0 else mid)
                 p0.append(float(candidate))
             else:
@@ -122,8 +114,6 @@ class ForecastService:
             try:
                 with np.errstate(over="ignore", invalid="ignore"):
                     result = np.asarray(model_fn(x_data, *params), dtype=float)
-                # Replace inf/nan with a large finite penalty so the optimizer can
-                # compute a gradient and step back toward a feasible region.
                 result = np.nan_to_num(result, nan=1e100, posinf=1e100, neginf=-1e100)
                 return result
             except (TypeError, ValueError) as e:
@@ -162,7 +152,6 @@ class ForecastService:
 
         k = max(0.0, float(confidence_k))
 
-        # Search on a wide horizon to find critical crossings for all three bands.
         right_search = x_max + span * 20.0
         x_search = np.linspace(x_min, right_search, 3000)
         y_search = wrapped_formula(x_search, *popt)
@@ -180,7 +169,6 @@ class ForecastService:
             x_search, y_lower_search, critical_value
         )
 
-        # Extend the display grid to include all crossings.
         right = x_max + span * horizon_extra
         for t in (t_critical_lsq, t_critical_upper, t_critical_lower):
             if t is not None and t > right:
@@ -192,7 +180,6 @@ class ForecastService:
         y_upper = y_centered + k * rmse
         y_lower = y_centered - k * rmse
 
-        # Recompute crossings on the final display grid for precision.
         t_critical_lsq = self._critical_time_from_curve(
             x_grid, y_centered, critical_value
         )
