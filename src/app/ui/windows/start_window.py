@@ -50,7 +50,7 @@ class StartWindow(QMainWindow):
         self.btn_edit = QPushButton("Изменить деталь")
         self.btn_delete = QPushButton("Удалить деталь")
         self.btn_templates = QPushButton("Шаблоны")
-        self.btn_archive = QPushButton("Архивировать (этап 8)")
+        self.btn_archive = QPushButton("Архивировать")
 
         right.addWidget(self.btn_add)
         right.addWidget(self.btn_edit)
@@ -159,7 +159,7 @@ class StartWindow(QMainWindow):
         self.templates_window.activateWindow()
 
     def on_archive_stub(self) -> None:
-        QMessageBox.information(self, "Архив", "Функция будет реализована на этапе 8.")
+        QMessageBox.information(self, "Архив", "Функция пока не реализована.")
 
     def keyPressEvent(self, event) -> None:
         if event.key() in (Qt.Key_Return, Qt.Key_Enter):
