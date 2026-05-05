@@ -50,7 +50,10 @@ class ArchiveService:
         with zipfile.ZipFile(archive_path, "w", compression=zipfile.ZIP_DEFLATED) as zf:
             for part in parts:
                 xlsx_bytes = self._build_part_xlsx(part.id, part.template_id)
-                filename = _safe_filename(part.name) + ".xlsx"
+                if part.serial_number:
+                    filename = _safe_filename(f"{part.name}_{part.serial_number}") + ".xlsx"
+                else:
+                    filename = _safe_filename(part.name) + ".xlsx"
                 zf.writestr(filename, xlsx_bytes)
 
         return archive_path
