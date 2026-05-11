@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from PySide6.QtWidgets import (
+    QHeaderView,
     QHBoxLayout,
     QMainWindow,
     QMessageBox,
@@ -35,6 +36,10 @@ class TemplateParametersWindow(QMainWindow):
 
         self.table = QTableWidget(0, 3)
         self.table.setHorizontalHeaderLabels(["Название", "Ед. изм.", "Критическое"])
+        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.table.setEditTriggers(QTableWidget.NoEditTriggers)
+        self.table.setSelectionBehavior(QTableWidget.SelectRows)
+        self.table.setSelectionMode(QTableWidget.SingleSelection)
         root.addWidget(self.table, 3)
 
         right = QVBoxLayout()

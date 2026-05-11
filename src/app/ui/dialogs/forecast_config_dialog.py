@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QDialog,
     QDialogButtonBox,
     QDoubleSpinBox,
     QFormLayout,
+    QHeaderView,
     QLineEdit,
     QMessageBox,
     QTableWidget,
@@ -34,6 +36,7 @@ class ForecastConfigDialog(QDialog):
 
         self.bounds_table = QTableWidget(0, 3)
         self.bounds_table.setHorizontalHeaderLabels(["Параметр", "Мин", "Макс"])
+        self.bounds_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self._initial_bounds = bounds_from_json(lsq_param_bounds_json)
 
         self.k_spin = QDoubleSpinBox()
@@ -72,7 +75,9 @@ class ForecastConfigDialog(QDialog):
             low, high = current_bounds.get(name, self._initial_bounds.get(name, (-1e6, 1e6)))
             row = self.bounds_table.rowCount()
             self.bounds_table.insertRow(row)
-            self.bounds_table.setItem(row, 0, QTableWidgetItem(name))
+            name_item = QTableWidgetItem(name)
+            name_item.setFlags(name_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
+            self.bounds_table.setItem(row, 0, name_item)
             self.bounds_table.setItem(row, 1, QTableWidgetItem(str(low)))
             self.bounds_table.setItem(row, 2, QTableWidgetItem(str(high)))
 

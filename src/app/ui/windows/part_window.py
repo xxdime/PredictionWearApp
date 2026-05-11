@@ -3,6 +3,7 @@ from __future__ import annotations
 from PySide6.QtWidgets import (
     QComboBox,
     QGridLayout,
+    QHeaderView,
     QHBoxLayout,
     QLabel,
     QMainWindow,
@@ -72,6 +73,7 @@ class PartWindow(QMainWindow):
         self.measurement_table.setSelectionBehavior(QTableWidget.SelectRows)
         self.measurement_table.setSelectionMode(QTableWidget.SingleSelection)
         self.measurement_table.setEditTriggers(QTableWidget.NoEditTriggers)
+        self.measurement_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         center.addWidget(self.measurement_table, 0, 0)
 
         right = QVBoxLayout()
@@ -113,6 +115,8 @@ class PartWindow(QMainWindow):
         info.addWidget(self.lbl_earliest_forecast)
         info.addStretch()
         center.addLayout(info, 1, 1)
+        center.setColumnStretch(0, 2)
+        center.setColumnStretch(1, 1)
 
         self.reload_parameters()
 
