@@ -116,6 +116,7 @@ class PartWindow(QMainWindow):
         info.addWidget(self.lbl_earliest_forecast)
         info.addStretch()
         center.addLayout(info, 1, 1)
+        # Левая часть (таблица + график) занимает 2/3, правая (кнопки + расшифровка) — 1/3.
         center.setColumnStretch(0, 2)
         center.setColumnStretch(1, 1)
 
