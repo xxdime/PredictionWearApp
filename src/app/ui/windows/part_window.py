@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 from PySide6.QtWidgets import (
+    QAbstractItemView,
     QComboBox,
     QGridLayout,
-    QHeaderView,
     QHBoxLayout,
+    QHeaderView,
     QLabel,
     QMainWindow,
     QMessageBox,
@@ -70,10 +71,10 @@ class PartWindow(QMainWindow):
 
         self.measurement_table = QTableWidget(0, 2)
         self.measurement_table.setHorizontalHeaderLabels(["Часы наработки", "Значение"])
-        self.measurement_table.setSelectionBehavior(QTableWidget.SelectRows)
-        self.measurement_table.setSelectionMode(QTableWidget.SingleSelection)
-        self.measurement_table.setEditTriggers(QTableWidget.NoEditTriggers)
-        self.measurement_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.measurement_table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+        self.measurement_table.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
+        self.measurement_table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        self.measurement_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         center.addWidget(self.measurement_table, 0, 0)
 
         right = QVBoxLayout()
