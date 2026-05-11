@@ -35,10 +35,6 @@ class TemplateParameter(Base):
     unit: Mapped[str] = mapped_column(String(32), default="mm", nullable=False)
     critical_value: Mapped[float] = mapped_column(Float, nullable=False)
 
-    degradation_direction: Mapped[str] = mapped_column(
-        String(32), default="decrease_to_critical", nullable=False
-    )
-
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
 
     template: Mapped[Template] = relationship(back_populates="parameters")
@@ -102,12 +98,9 @@ class ForecastConfig(Base):
         ForeignKey("template_parameters.id", ondelete="CASCADE"), nullable=False
     )
 
-    lsq_model_type: Mapped[str] = mapped_column(String(32), default="linear", nullable=False)
-    lsq_poly_degree: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
-
-    gpr_kernel_type: Mapped[str] = mapped_column(String(64), default="RBF", nullable=False)
-    gpr_alpha: Mapped[float] = mapped_column(Float, default=1e-6, nullable=False)
-    gpr_confidence_level: Mapped[float] = mapped_column(Float, default=0.95, nullable=False)
+    lsq_model_formula: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    lsq_param_bounds_json: Mapped[str] = mapped_column(Text, default="{}", nullable=False)
+    confidence_k: Mapped[float] = mapped_column(Float, default=2.0, nullable=False)
 
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(

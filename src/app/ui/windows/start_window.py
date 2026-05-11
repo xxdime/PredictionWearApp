@@ -12,8 +12,10 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from app.domain.services.archive_service import ArchiveService
 from app.infrastructure.db.models import Part
 from app.infrastructure.db.repositories.part_repo import PartRepository
+from app.ui.dialogs.archive_dialog import ArchiveDialog
 from app.ui.dialogs.part_dialog import PartDialog
 from app.ui.windows.part_window import PartWindow
 from app.ui.windows.templates_window import TemplatesWindow
@@ -50,7 +52,7 @@ class StartWindow(QMainWindow):
         self.btn_edit = QPushButton("Изменить деталь")
         self.btn_delete = QPushButton("Удалить деталь")
         self.btn_templates = QPushButton("Шаблоны")
-        self.btn_archive = QPushButton("Архивировать (этап 8)")
+        self.btn_archive = QPushButton("Архивировать")
 
         right.addWidget(self.btn_add)
         right.addWidget(self.btn_edit)
@@ -63,7 +65,7 @@ class StartWindow(QMainWindow):
         self.btn_edit.clicked.connect(self.on_edit_part)
         self.btn_delete.clicked.connect(self.on_delete_part)
         self.btn_templates.clicked.connect(self.open_templates)
-        self.btn_archive.clicked.connect(self.on_archive_stub)
+        self.btn_archive.clicked.connect(self.on_archive)
 
         self.reload_parts()
 
@@ -158,8 +160,16 @@ class StartWindow(QMainWindow):
         self.templates_window.raise_()
         self.templates_window.activateWindow()
 
-    def on_archive_stub(self) -> None:
-        QMessageBox.information(self, "Архив", "Функция будет реализована на этапе 8.")
+    def on_archive(self) -> None:
+        dialog = ArchiveDialog(self)
+        if not dialog.exec():
+            return
+        directory, archive_name = dialog.get_data()
+        try:
+            path = ArchiveService().export(directory, archive_name)
+            QMessageBox.information(self, "Архив", f"Архив успешно создан:\n{path}")
+        except Exception as e:
+            QMessageBox.critical(self, "Ошибка", f"Не удалось создать архив:\n{e}")
 
     def keyPressEvent(self, event) -> None:
         if event.key() in (Qt.Key_Return, Qt.Key_Enter):

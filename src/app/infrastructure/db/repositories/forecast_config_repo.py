@@ -28,11 +28,9 @@ class ForecastConfigRepository:
             cfg = ForecastConfig(
                 template_id=template_id,
                 parameter_id=parameter_id,
-                lsq_model_type="linear",
-                lsq_poly_degree=1,
-                gpr_kernel_type="RBF",
-                gpr_alpha=1e-6,
-                gpr_confidence_level=0.95,
+                lsq_model_formula="",
+                lsq_param_bounds_json="{}",
+                confidence_k=2.0,
             )
             session.add(cfg)
             session.flush()
@@ -44,11 +42,9 @@ class ForecastConfigRepository:
         template_id: int,
         parameter_id: int,
         *,
-        lsq_model_type: str,
-        lsq_poly_degree: int,
-        gpr_kernel_type: str,
-        gpr_alpha: float,
-        gpr_confidence_level: float,
+        lsq_model_formula: str,
+        lsq_param_bounds_json: str,
+        confidence_k: float,
     ) -> ForecastConfig:
         with get_session() as session:
             stmt = select(ForecastConfig).where(
@@ -60,22 +56,18 @@ class ForecastConfigRepository:
                 cfg = ForecastConfig(
                     template_id=template_id,
                     parameter_id=parameter_id,
-                    lsq_model_type=lsq_model_type,
-                    lsq_poly_degree=lsq_poly_degree,
-                    gpr_kernel_type=gpr_kernel_type,
-                    gpr_alpha=gpr_alpha,
-                    gpr_confidence_level=gpr_confidence_level,
+                    lsq_model_formula=lsq_model_formula,
+                    lsq_param_bounds_json=lsq_param_bounds_json,
+                    confidence_k=confidence_k,
                 )
                 session.add(cfg)
                 session.flush()
                 session.refresh(cfg)
                 return cfg
 
-            cfg.lsq_model_type = lsq_model_type
-            cfg.lsq_poly_degree = int(lsq_poly_degree)
-            cfg.gpr_kernel_type = gpr_kernel_type
-            cfg.gpr_alpha = float(gpr_alpha)
-            cfg.gpr_confidence_level = float(gpr_confidence_level)
+            cfg.lsq_model_formula = lsq_model_formula
+            cfg.lsq_param_bounds_json = lsq_param_bounds_json
+            cfg.confidence_k = float(confidence_k)
             session.flush()
             session.refresh(cfg)
             return cfg

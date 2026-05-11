@@ -29,7 +29,6 @@ class TemplateParameterRepository:
         name: str,
         unit: str,
         critical_value: float,
-        degradation_direction: str,
     ) -> TemplateParameter:
         try:
             with get_session() as session:
@@ -38,7 +37,6 @@ class TemplateParameterRepository:
                     name=name,
                     unit=unit,
                     critical_value=critical_value,
-                    degradation_direction=degradation_direction,
                 )
                 session.add(param)
                 session.flush()
@@ -55,7 +53,6 @@ class TemplateParameterRepository:
         name: str,
         unit: str,
         critical_value: float,
-        degradation_direction: str,
     ) -> None:
         try:
             with get_session() as session:
@@ -65,7 +62,6 @@ class TemplateParameterRepository:
                 param.name = name
                 param.unit = unit
                 param.critical_value = critical_value
-                param.degradation_direction = degradation_direction
         except IntegrityError as exc:
             raise ValueError(
                 f"Параметр с именем '{name}' уже существует для данного шаблона."

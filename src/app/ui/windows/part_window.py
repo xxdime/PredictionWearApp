@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 from PySide6.QtWidgets import (
+    QAbstractItemView,
     QComboBox,
     QGridLayout,
     QHBoxLayout,
+    QHeaderView,
     QLabel,
     QMainWindow,
     QMessageBox,
@@ -20,8 +22,14 @@ from app.infrastructure.db.repositories.forecast_config_repo import ForecastConf
 from app.infrastructure.db.repositories.measurement_repo import MeasurementRepository
 from app.infrastructure.db.repositories.part_repo import PartRepository
 from app.infrastructure.db.repositories.template_parameter_repo import TemplateParameterRepository
+from app.ui.dialogs.forecast_config_dialog import ForecastConfigDialog
 from app.ui.dialogs.measurement_dialog import MeasurementDialog
 from app.ui.widgets.forecast_plot_widget import ForecastPlotWidget
+
+# Шкала качества MAPE: <10% отлично, 10-20% хорошо, 20-50% удовлетворительно, >=50% плохо.
+MAPE_EXCELLENT_THRESHOLD = 10.0
+MAPE_GOOD_THRESHOLD = 20.0
+MAPE_ACCEPTABLE_THRESHOLD = 50.0
 
 
 class PartWindow(QMainWindow):
@@ -53,6 +61,9 @@ class PartWindow(QMainWindow):
         self.parameter_combo = QComboBox()
         self.parameter_combo.currentIndexChanged.connect(self.reload_measurements)
         top.addWidget(self.parameter_combo, 1)
+        self.btn_forecast_cfg = QPushButton("Настройки прогноза")
+        self.btn_forecast_cfg.clicked.connect(self.on_forecast_config)
+        top.addWidget(self.btn_forecast_cfg)
         root.addLayout(top)
 
         center = QGridLayout()
@@ -60,9 +71,10 @@ class PartWindow(QMainWindow):
 
         self.measurement_table = QTableWidget(0, 2)
         self.measurement_table.setHorizontalHeaderLabels(["Часы наработки", "Значение"])
-        self.measurement_table.setSelectionBehavior(QTableWidget.SelectRows)
-        self.measurement_table.setSelectionMode(QTableWidget.SingleSelection)
-        self.measurement_table.setEditTriggers(QTableWidget.NoEditTriggers)
+        self.measurement_table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+        self.measurement_table.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
+        self.measurement_table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        self.measurement_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         center.addWidget(self.measurement_table, 0, 0)
 
         right = QVBoxLayout()
@@ -85,16 +97,28 @@ class PartWindow(QMainWindow):
         center.addLayout(right, 0, 1)
 
         self.plot_widget = ForecastPlotWidget()
-        center.addWidget(self.plot_widget, 1, 0, 1, 2)
+        center.addWidget(self.plot_widget, 1, 0)
 
         self.lbl_current_param_forecast = QLabel(
             "Прогноз по выбранному параметру: нажмите 'Обновить график'."
         )
+        self.lbl_model_mape = QLabel("MAPE модели: будет рассчитан после обновления графика.")
+        self.lbl_model_quality = QLabel(
+            "Качество модели: будет рассчитано после обновления графика."
+        )
         self.lbl_earliest_forecast = QLabel(
             "Самый ранний критический параметр: будет рассчитан после обновления графика."
         )
-        root.addWidget(self.lbl_current_param_forecast)
-        root.addWidget(self.lbl_earliest_forecast)
+        info = QVBoxLayout()
+        info.addWidget(self.lbl_current_param_forecast)
+        info.addWidget(self.lbl_model_mape)
+        info.addWidget(self.lbl_model_quality)
+        info.addWidget(self.lbl_earliest_forecast)
+        info.addStretch()
+        center.addLayout(info, 1, 1)
+        # Левая часть (таблица + график) занимает 2/3, правая (кнопки + расшифровка) — 1/3.
+        center.setColumnStretch(0, 2)
+        center.setColumnStretch(1, 1)
 
         self.reload_parameters()
 
@@ -191,11 +215,51 @@ class PartWindow(QMainWindow):
             except Exception as e:
                 QMessageBox.critical(self, "Ошибка", f"Не удалось удалить измерение:\n{e}")
 
+    def on_forecast_config(self) -> None:
+        param = self._current_parameter()
+        if param is None:
+            QMessageBox.warning(self, "Настройки прогноза", "Нет выбранного параметра.")
+            return
+
+        cfg = self.forecast_config_repo.get_or_create_default(self._part.template_id, param.id)
+
+        dialog = ForecastConfigDialog(
+            self,
+            lsq_model_formula=cfg.lsq_model_formula,
+            lsq_param_bounds_json=cfg.lsq_param_bounds_json,
+            confidence_k=cfg.confidence_k,
+        )
+        if dialog.exec():
+            (
+                lsq_model_formula,
+                lsq_param_bounds_json,
+                confidence_k,
+            ) = dialog.get_data()
+            self.forecast_config_repo.upsert(
+                self._part.template_id,
+                param.id,
+                lsq_model_formula=lsq_model_formula,
+                lsq_param_bounds_json=lsq_param_bounds_json,
+                confidence_k=confidence_k,
+            )
+            QMessageBox.information(self, "Настройки прогноза", "Сохранено.")
+
     def _collect_points(self, parameter_id: int) -> tuple[list[float], list[float]]:
         ms = list(self.measurement_repo.list_by_part_and_parameter(self.part_id, parameter_id))
         x = [m.operating_hours for m in ms]
         y = [m.value for m in ms]
         return x, y
+
+    def _describe_mape_quality(self, mape: float | None) -> str:
+        if mape is None:
+            return "Качество модели: MAPE не определён (нулевые фактические значения)."
+        if mape < MAPE_EXCELLENT_THRESHOLD:
+            return "Качество модели: отличное."
+        if mape < MAPE_GOOD_THRESHOLD:
+            return "Качество модели: хорошее."
+        if mape < MAPE_ACCEPTABLE_THRESHOLD:
+            return "Качество модели: удовлетворительное."
+        return "Качество модели: неудовлетворительное."
 
     def on_refresh_plot(self) -> None:
         param = self._current_parameter()
@@ -210,6 +274,8 @@ class PartWindow(QMainWindow):
             self.lbl_current_param_forecast.setText(
                 f"Прогноз по '{param.name}': недостаточно данных."
             )
+            self.lbl_model_mape.setText("MAPE модели: недостаточно данных.")
+            self.lbl_model_quality.setText("Качество модели: недостаточно данных.")
             return
 
         try:
@@ -219,23 +285,39 @@ class PartWindow(QMainWindow):
                 operating_hours=x,
                 values=y,
                 critical_value=param.critical_value,
-                degradation_direction=param.degradation_direction,
-                lsq_model_type=cfg.lsq_model_type,
-                lsq_poly_degree=cfg.lsq_poly_degree,
-                gpr_kernel_type=cfg.gpr_kernel_type,
-                gpr_alpha=cfg.gpr_alpha,
-                gpr_confidence_level=cfg.gpr_confidence_level,
+                lsq_model_formula=cfg.lsq_model_formula,
+                lsq_param_bounds_json=cfg.lsq_param_bounds_json,
+                confidence_k=cfg.confidence_k,
             )
             self.plot_widget.draw(result, critical_value=param.critical_value)
 
             if result.t_critical_lsq is None:
-                msg = f"По параметру '{param.name}' время достижения критического значения не определено."
-            else:
                 msg = (
-                    f"По параметру '{param.name}' критическое значение будет достигнуто примерно "
-                    f"на {result.t_critical_lsq:.2f} ч наработки (оценка МНК)."
+                    f"По параметру '{param.name}' время достижения "
+                    "критического значения не определено."
                 )
+            else:
+                t_low = result.t_critical_lower
+                t_high = result.t_critical_upper
+                if t_low is not None and t_high is not None:
+                    t_early = min(t_low, t_high)
+                    t_late = max(t_low, t_high)
+                    msg = (
+                        f"По параметру '{param.name}' критическое значение ожидается на "
+                        f"~{result.t_critical_lsq:.2f} ч (оценка МНК); "
+                        f"интервал: от {t_early:.2f} до {t_late:.2f} ч."
+                    )
+                else:
+                    msg = (
+                        f"По параметру '{param.name}' критическое значение будет достигнуто "
+                        f"примерно на {result.t_critical_lsq:.2f} ч наработки (оценка МНК)."
+                    )
             self.lbl_current_param_forecast.setText(msg)
+            if result.mape is None:
+                self.lbl_model_mape.setText("MAPE модели: не определён.")
+            else:
+                self.lbl_model_mape.setText(f"MAPE модели: {result.mape:.2f}%")
+            self.lbl_model_quality.setText(self._describe_mape_quality(result.mape))
 
             earliest_name: str | None = None
             earliest_t: float | None = None
@@ -250,12 +332,9 @@ class PartWindow(QMainWindow):
                     px,
                     py,
                     p.critical_value,
-                    degradation_direction=p.degradation_direction,
-                    lsq_model_type=pcfg.lsq_model_type,
-                    lsq_poly_degree=pcfg.lsq_poly_degree,
-                    gpr_kernel_type=pcfg.gpr_kernel_type,
-                    gpr_alpha=pcfg.gpr_alpha,
-                    gpr_confidence_level=pcfg.gpr_confidence_level,
+                    lsq_model_formula=pcfg.lsq_model_formula,
+                    lsq_param_bounds_json=pcfg.lsq_param_bounds_json,
+                    confidence_k=pcfg.confidence_k,
                 )
                 if r.t_critical_lsq is None:
                     continue

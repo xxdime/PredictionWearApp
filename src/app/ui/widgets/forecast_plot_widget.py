@@ -39,17 +39,14 @@ class ForecastPlotWidget(QWidget):
 
         self.plot.plot(
             result.x_grid,
-            result.y_gpr_mean,
+            result.y_centered,
             pen=pg.mkPen(style=pg.QtCore.Qt.DashLine),
-            name="GPR mean",
+            name="Центр (МНК - Bias)",
         )
 
-        upper = result.y_gpr_mean + result.confidence_z * result.y_gpr_std
-        lower = result.y_gpr_mean - result.confidence_z * result.y_gpr_std
-
         ci_brush = pg.mkBrush(100, 149, 237, 60)
-        ci_u = pg.PlotDataItem(result.x_grid, upper, pen=None)
-        ci_l = pg.PlotDataItem(result.x_grid, lower, pen=None)
+        ci_u = pg.PlotDataItem(result.x_grid, result.y_upper, pen=None)
+        ci_l = pg.PlotDataItem(result.x_grid, result.y_lower, pen=None)
         fill = pg.FillBetweenItem(ci_u, ci_l, brush=ci_brush)
         self.plot.addItem(ci_u)
         self.plot.addItem(ci_l)
@@ -62,12 +59,35 @@ class ForecastPlotWidget(QWidget):
         )
         self.plot.addItem(crit_line)
 
+        # X mark where the centered line crosses the critical value.
         if result.t_critical_lsq is not None:
             self.plot.plot(
                 [result.t_critical_lsq],
                 [critical_value],
                 pen=None,
                 symbol="x",
-                symbolSize=12,
-                name="Крит. точка",
+                symbolSize=14,
+                symbolPen=pg.mkPen("r", width=2),
+                name="Крит. точка (центр)",
             )
+
+        # Dashed vertical lines for the confidence interval of the critical time.
+        if result.t_critical_lower is not None:
+            line_lower = pg.InfiniteLine(
+                pos=result.t_critical_lower,
+                angle=90,
+                pen=pg.mkPen("m", width=1, style=pg.QtCore.Qt.DashLine),
+                label=f"t_нижн≈{result.t_critical_lower:.1f}",
+                labelOpts={"position": 0.85, "color": "m"},
+            )
+            self.plot.addItem(line_lower)
+
+        if result.t_critical_upper is not None:
+            line_upper = pg.InfiniteLine(
+                pos=result.t_critical_upper,
+                angle=90,
+                pen=pg.mkPen("g", width=1, style=pg.QtCore.Qt.DashLine),
+                label=f"t_верхн≈{result.t_critical_upper:.1f}",
+                labelOpts={"position": 0.85, "color": "g"},
+            )
+            self.plot.addItem(line_upper)
