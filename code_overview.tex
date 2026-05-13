@@ -5,6 +5,7 @@
 \usepackage{geometry}
 \usepackage{xcolor}
 \usepackage{listings}
+\usepackage{needspace}
 
 \geometry{margin=25mm}
 
@@ -18,6 +19,9 @@
   frame=single,
   breaklines=true
 }
+\lstnewenvironment{codeblock}
+  {\Needspace{12\baselineskip}\lstset{style=py}}
+  {}
 
 \title{Обзор кода приложения Turbine Wear Forecast}
 \author{}
@@ -30,6 +34,8 @@
 Приложение построено как desktop-клиент на PySide6 с хранением данных в SQLite
 через SQLAlchemy. Архитектура разделена на доменные сервисы, слой доступа к данным
 и интерфейс пользователя.
+Такой подход отделяет расчётную часть (прогноз, анализ формул) от UI и упрощает
+тестирование отдельных компонентов.
 
 \section*{Структура проекта}
 \begin{itemize}
@@ -38,10 +44,14 @@
   \item \texttt{src/app/infrastructure/db} --- модели БД и репозитории.
   \item \texttt{src/app/ui} --- окна, диалоги и виджеты графика.
 \end{itemize}
+Каждый слой отвечает за свою область: UI только собирает ввод, доменные сервисы
+делают вычисления, а репозитории скрывают детали SQL-запросов.
 
 \section*{Точка входа}
 Приложение инициализирует БД и открывает стартовое окно со списком деталей.
-\begin{lstlisting}[style=py]
+Создание таблиц происходит один раз при запуске, после чего стартует основной
+циклический обработчик событий Qt.
+\begin{codeblock}
 def run() -> int:
     Base.metadata.create_all(bind=engine)
 
@@ -49,12 +59,14 @@ def run() -> int:
     window = StartWindow()
     window.show()
     return app.exec()
-\end{lstlisting}
+\end{codeblock}
 
 \section*{Модель данных}
 В БД есть шаблоны деталей, параметры шаблонов, детали, измерения и настройки прогноза.
 Ниже показаны ключевые поля параметра и измерения.
-\begin{lstlisting}[style=py]
+Параметр шаблона хранит допустимое критическое значение, а измерение фиксирует
+значение на конкретной наработке.
+\begin{codeblock}
 class TemplateParameter(Base):
     __tablename__ = "template_parameters"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -64,9 +76,9 @@ class TemplateParameter(Base):
     name: Mapped[str] = mapped_column(String(120), nullable=False)
     unit: Mapped[str] = mapped_column(String(32), default="mm", nullable=False)
     critical_value: Mapped[float] = mapped_column(Float, nullable=False)
-\end{lstlisting}
+\end{codeblock}
 
-\begin{lstlisting}[style=py]
+\begin{codeblock}
 class Measurement(Base):
     __tablename__ = "measurements"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -76,12 +88,13 @@ class Measurement(Base):
     )
     operating_hours: Mapped[float] = mapped_column(Float, nullable=False)
     value: Mapped[float] = mapped_column(Float, nullable=False)
-\end{lstlisting}
+\end{codeblock}
 
 \section*{Слой доступа к данным}
 Репозитории инкапсулируют SQL-запросы и обеспечивают CRUD для сущностей. Например,
 для измерений задается сортировка по часам наработки и проверка уникальности точки.
-\begin{lstlisting}[style=py]
+Сортировка важна для корректного построения графика и расчёта прогноза во времени.
+\begin{codeblock}
 class MeasurementRepository:
     def list_by_part_and_parameter(self, part_id: int, parameter_id: int):
         with get_session() as session:
@@ -94,12 +107,14 @@ class MeasurementRepository:
                 .order_by(Measurement.operating_hours.asc())
             )
             return session.scalars(stmt).all()
-\end{lstlisting}
+\end{codeblock}
 
 \section*{Разбор формулы МНК}
 Формула вводится пользователем, разбирается через \texttt{sympy}, из нее
 извлекаются параметры и проверяется наличие переменной $x$.
-\begin{lstlisting}[style=py]
+Поддерживаются варианты записи с ``y = ...'' или без левой части, а список
+параметров затем используется для подбора коэффициентов.
+\begin{codeblock}
 def parse_lsq_formula(formula: str) -> ParsedLSQFormula:
     text = formula.strip()
     if "=" in text:
@@ -113,12 +128,14 @@ def parse_lsq_formula(formula: str) -> ParsedLSQFormula:
         raise ValueError("Формула должна содержать переменную x.")
     parameter_names = sorted(name for name in symbol_names if name != "x")
     return ParsedLSQFormula(expression=expr, parameter_names=parameter_names)
-\end{lstlisting}
+\end{codeblock}
 
 \section*{Сервис прогноза}
 Сервис прогнозирования выполняет аппроксимацию, вычисляет метрики Bias/RMSE/MAPE
 и определяет момент достижения критического значения.
-\begin{lstlisting}[style=py]
+Он получает точки измерений, строит модель МНК и возвращает структуру данных,
+которая затем используется и для графика, и для текстового вывода.
+\begin{codeblock}
 class ForecastService:
     def compute(
         self,
@@ -136,11 +153,12 @@ class ForecastService:
         parsed = parse_lsq_formula(lsq_model_formula)
         model_fn = sp.lambdify((x_symbol, *param_symbols), parsed.expression, modules="numpy")
         popt, _ = curve_fit(wrapped_formula, x, y, p0=p0, bounds=(lower, upper))
-\end{lstlisting}
+\end{codeblock}
 
 \section*{Окна интерфейса}
 Стартовое окно управляет деталями и открывает окно конкретной детали.
-\begin{lstlisting}[style=py]
+Через диалог создаётся новая деталь, после чего список сразу обновляется.
+\begin{codeblock}
 class StartWindow(QMainWindow):
     def on_add_part(self) -> None:
         dialog = PartDialog(self)
@@ -148,10 +166,11 @@ class StartWindow(QMainWindow):
             template_id, name, serial, place, notes = dialog.get_data()
             self.part_repo.create(template_id, name, serial, place, notes)
             self.reload_parts()
-\end{lstlisting}
+\end{codeblock}
 
 В окне детали пользователь вводит измерения и строит прогноз с графиком и текстовой расшифровкой.
-\begin{lstlisting}[style=py]
+Метод собирает точки, применяет настройки формулы и передаёт результат в виджет графика.
+\begin{codeblock}
 def on_refresh_plot(self) -> None:
     param = self._current_parameter()
     x, y = self._collect_points(param.id)
@@ -165,12 +184,14 @@ def on_refresh_plot(self) -> None:
         confidence_k=cfg.confidence_k,
     )
     self.plot_widget.draw(result, critical_value=param.critical_value)
-\end{lstlisting}
+\end{codeblock}
 
 \section*{График прогноза}
 Виджет графика визуализирует точки измерений, линию МНК, доверительную зону
 и критическое значение.
-\begin{lstlisting}[style=py]
+Используется \texttt{pyqtgraph}: точки измерений рисуются маркерами, прогноз ---
+сплошной линией, а критическая граница --- отдельной горизонтальной линией.
+\begin{codeblock}
 class ForecastPlotWidget(QWidget):
     def draw(self, result: ForecastResult, critical_value: float) -> None:
         self.plot.plot(result.x_train, result.y_train, pen=None, symbol="o")
@@ -178,11 +199,13 @@ class ForecastPlotWidget(QWidget):
         self.plot.plot(result.x_grid, result.y_centered, pen=pg.mkPen(style=pg.QtCore.Qt.DashLine))
         crit_line = pg.InfiniteLine(pos=critical_value, angle=0, pen=pg.mkPen("r", width=2))
         self.plot.addItem(crit_line)
-\end{lstlisting}
+\end{codeblock}
 
 \section*{Экспорт архива}
 Сервис архивирования выгружает измерения в ZIP с Excel-файлами по деталям.
-\begin{lstlisting}[style=py]
+Каждая деталь экспортируется в отдельный XLSX, а имена файлов очищаются от
+неподдерживаемых символов.
+\begin{codeblock}
 class ArchiveService:
     def export(self, directory: str, archive_name: str) -> Path:
         dest_dir = Path(directory)
@@ -194,11 +217,13 @@ class ArchiveService:
                 filename = _safe_filename(part.name) + ".xlsx"
                 zf.writestr(filename, xlsx_bytes)
         return archive_path
-\end{lstlisting}
+\end{codeblock}
 
 \section*{Итог}
 Код разделён на понятные слои: данные, доменная логика и UI. Основная вычислительная
 часть сосредоточена в сервисе прогноза, а визуализация и ввод данных реализованы
 в окнах PySide6 и виджете графика.
+Такой подход облегчает поддержку: можно менять формулу прогноза или интерфейс
+без затрагивания остальных слоёв.
 
 \end{document}
