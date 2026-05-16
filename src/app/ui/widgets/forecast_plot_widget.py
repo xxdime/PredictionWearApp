@@ -8,6 +8,9 @@ from app.domain.services.forecast_service import ForecastResult
 
 
 class ForecastPlotWidget(QWidget):
+    MIN_Y_RANGE_THRESHOLD = 1e-9
+    DEFAULT_Y_RANGE_SPAN = 1.0
+
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
 
@@ -98,13 +101,13 @@ class ForecastPlotWidget(QWidget):
             return
 
         data = np.concatenate(
-            (
-                result.y_train,
-                result.y_lsq,
-                result.y_centered,
-                result.y_upper,
-                result.y_lower,
-            )
+            [
+                result.y_train.ravel(),
+                result.y_lsq.ravel(),
+                result.y_centered.ravel(),
+                result.y_upper.ravel(),
+                result.y_lower.ravel(),
+            ]
         )
         finite = data[np.isfinite(data)]
         if finite.size == 0:
@@ -114,6 +117,8 @@ class ForecastPlotWidget(QWidget):
         data_max = float(finite.max())
         overall_min = min(data_min, float(critical_value))
         overall_max = max(data_max, float(critical_value))
+        if overall_max - overall_min < self.MIN_Y_RANGE_THRESHOLD:
+            overall_max = overall_min + self.DEFAULT_Y_RANGE_SPAN
 
         if result.y_centered.size >= 2:
             start = float(result.y_centered[0])
@@ -133,8 +138,8 @@ class ForecastPlotWidget(QWidget):
         if y_max <= y_min:
             y_min, y_max = overall_min, overall_max
 
-        min_range_threshold = 1e-9
-        fallback_range = 1.0
+        min_range_threshold = self.MIN_Y_RANGE_THRESHOLD
+        fallback_range = self.DEFAULT_Y_RANGE_SPAN
         if y_max - y_min < min_range_threshold:
             y_max = y_min + fallback_range
 
