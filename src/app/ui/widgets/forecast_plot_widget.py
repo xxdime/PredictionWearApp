@@ -115,10 +115,13 @@ class ForecastPlotWidget(QWidget):
         overall_min = min(data_min, float(critical_value))
         overall_max = max(data_max, float(critical_value))
 
-        start = float(result.y_centered[0])
-        end = float(result.y_centered[-1])
-        if np.isfinite(start) and np.isfinite(end):
-            is_increasing = end >= start
+        if result.y_centered.size >= 2:
+            start = float(result.y_centered[0])
+            end = float(result.y_centered[-1])
+            if np.isfinite(start) and np.isfinite(end):
+                is_increasing = end >= start
+            else:
+                is_increasing = result.slope >= 0
         else:
             is_increasing = result.slope >= 0
 
@@ -130,8 +133,10 @@ class ForecastPlotWidget(QWidget):
         if y_max <= y_min:
             y_min, y_max = overall_min, overall_max
 
-        if y_max - y_min < 1e-9:
-            y_max = y_min + 1.0
+        min_range_threshold = 1e-9
+        fallback_range = 1.0
+        if y_max - y_min < min_range_threshold:
+            y_max = y_min + fallback_range
 
         self.plot.setYRange(y_min, y_max, padding=0.05)
         self.plot.enableAutoRange(axis=pg.ViewBox.YAxis, enable=False)
