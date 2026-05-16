@@ -83,7 +83,27 @@ class ForecastConfigDialog(QDialog):
             self.bounds_table.setItem(row, 1, QTableWidgetItem(str(low)))
             self.bounds_table.setItem(row, 2, QTableWidgetItem(str(high)))
 
-        self.bounds_table.resizeColumnsToContents()
+        self._sync_bounds_columns()
+
+    def _sync_bounds_columns(self) -> None:
+        width = self.bounds_table.viewport().width()
+        if width <= 0:
+            return
+        columns = self.bounds_table.columnCount()
+        if columns == 0:
+            return
+        base_width = width // columns
+        for col in range(columns - 1):
+            self.bounds_table.setColumnWidth(col, base_width)
+        self.bounds_table.setColumnWidth(columns - 1, width - base_width * (columns - 1))
+
+    def showEvent(self, event) -> None:
+        super().showEvent(event)
+        self._sync_bounds_columns()
+
+    def resizeEvent(self, event) -> None:
+        super().resizeEvent(event)
+        self._sync_bounds_columns()
 
     def _collect_bounds_from_table(self) -> dict[str, tuple[float, float]]:
         bounds: dict[str, tuple[float, float]] = {}
