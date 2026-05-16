@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import numpy as np
 import pyqtgraph as pg
 from PySide6.QtWidgets import QVBoxLayout, QWidget
 
@@ -89,3 +90,45 @@ class ForecastPlotWidget(QWidget):
                 labelOpts={"position": 0.85, "color": "g"},
             )
             self.plot.addItem(line_upper)
+
+        self._apply_critical_range(result, critical_value)
+
+    def _apply_critical_range(self, result: ForecastResult, critical_value: float) -> None:
+        if not np.isfinite(critical_value):
+            return
+
+        data = np.concatenate(
+            (
+                result.y_train,
+                result.y_lsq,
+                result.y_centered,
+                result.y_upper,
+                result.y_lower,
+            )
+        )
+        finite = data[np.isfinite(data)]
+        if finite.size == 0:
+            return
+
+        data_min = float(finite.min())
+        data_max = float(finite.max())
+        overall_min = min(data_min, float(critical_value))
+        overall_max = max(data_max, float(critical_value))
+
+        start = float(result.y_centered[0])
+        end = float(result.y_centered[-1])
+        is_increasing = end >= start if np.isfinite(start) and np.isfinite(end) else result.slope >= 0
+
+        if is_increasing:
+            y_min, y_max = overall_min, float(critical_value)
+        else:
+            y_min, y_max = float(critical_value), overall_max
+
+        if y_max <= y_min:
+            y_min, y_max = overall_min, overall_max
+
+        if y_max - y_min < 1e-9:
+            y_max = y_min + 1.0
+
+        self.plot.setYRange(y_min, y_max, padding=0.05)
+        self.plot.enableAutoRange(axis=pg.ViewBox.YAxis, enable=False)
