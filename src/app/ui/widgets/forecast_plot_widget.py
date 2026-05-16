@@ -117,7 +117,10 @@ class ForecastPlotWidget(QWidget):
 
         start = float(result.y_centered[0])
         end = float(result.y_centered[-1])
-        is_increasing = end >= start if np.isfinite(start) and np.isfinite(end) else result.slope >= 0
+        if np.isfinite(start) and np.isfinite(end):
+            is_increasing = end >= start
+        else:
+            is_increasing = result.slope >= 0
 
         if is_increasing:
             y_min, y_max = overall_min, float(critical_value)
