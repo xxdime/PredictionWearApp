@@ -102,13 +102,17 @@ class PartWindow(QMainWindow):
         self.lbl_current_param_forecast = QLabel(
             "Прогноз по выбранному параметру: нажмите 'Обновить график'."
         )
+        self.lbl_current_param_forecast.setWordWrap(True)
         self.lbl_model_mape = QLabel("MAPE модели: будет рассчитан после обновления графика.")
+        self.lbl_model_mape.setWordWrap(True)
         self.lbl_model_quality = QLabel(
             "Качество модели: будет рассчитано после обновления графика."
         )
+        self.lbl_model_quality.setWordWrap(True)
         self.lbl_earliest_forecast = QLabel(
             "Самый ранний критический параметр: будет рассчитан после обновления графика."
         )
+        self.lbl_earliest_forecast.setWordWrap(True)
         info = QVBoxLayout()
         info.addWidget(self.lbl_current_param_forecast)
         info.addWidget(self.lbl_model_mape)

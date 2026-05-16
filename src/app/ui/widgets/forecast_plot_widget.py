@@ -77,7 +77,6 @@ class ForecastPlotWidget(QWidget):
                 pos=result.t_critical_lower,
                 angle=90,
                 pen=pg.mkPen("m", width=1, style=pg.QtCore.Qt.DashLine),
-                label=f"t_нижн≈{result.t_critical_lower:.1f}",
                 labelOpts={"position": 0.85, "color": "m"},
             )
             self.plot.addItem(line_lower)
@@ -87,7 +86,6 @@ class ForecastPlotWidget(QWidget):
                 pos=result.t_critical_upper,
                 angle=90,
                 pen=pg.mkPen("g", width=1, style=pg.QtCore.Qt.DashLine),
-                label=f"t_верхн≈{result.t_critical_upper:.1f}",
                 labelOpts={"position": 0.85, "color": "g"},
             )
             self.plot.addItem(line_upper)
