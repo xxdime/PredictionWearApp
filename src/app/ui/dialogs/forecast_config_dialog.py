@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QResizeEvent, QShowEvent
 from PySide6.QtWidgets import (
     QDialog,
     QDialogButtonBox,
@@ -97,11 +98,11 @@ class ForecastConfigDialog(QDialog):
             self.bounds_table.setColumnWidth(col, base_width)
         self.bounds_table.setColumnWidth(columns - 1, width - base_width * (columns - 1))
 
-    def showEvent(self, event) -> None:
+    def showEvent(self, event: QShowEvent) -> None:
         super().showEvent(event)
         self._sync_bounds_columns()
 
-    def resizeEvent(self, event) -> None:
+    def resizeEvent(self, event: QResizeEvent) -> None:
         super().resizeEvent(event)
         self._sync_bounds_columns()
 

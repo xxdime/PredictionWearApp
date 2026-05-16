@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from PySide6.QtGui import QResizeEvent, QShowEvent
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QHBoxLayout,
@@ -90,11 +91,11 @@ class TemplateParametersWindow(QMainWindow):
             self.table.setColumnWidth(col, base_width)
         self.table.setColumnWidth(columns - 1, width - base_width * (columns - 1))
 
-    def showEvent(self, event) -> None:
+    def showEvent(self, event: QShowEvent) -> None:
         super().showEvent(event)
         self._sync_table_columns()
 
-    def resizeEvent(self, event) -> None:
+    def resizeEvent(self, event: QResizeEvent) -> None:
         super().resizeEvent(event)
         self._sync_table_columns()
 
