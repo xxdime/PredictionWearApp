@@ -36,7 +36,9 @@ class ForecastConfigDialog(QDialog):
 
         self.bounds_table = QTableWidget(0, 3)
         self.bounds_table.setHorizontalHeaderLabels(["Параметр", "Мин", "Макс"])
-        self.bounds_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        header = self.bounds_table.horizontalHeader()
+        header.setSectionResizeMode(QHeaderView.ResizeMode.Fixed)
+        header.setStretchLastSection(False)
         self._initial_bounds = bounds_from_json(lsq_param_bounds_json)
 
         self.k_spin = QDoubleSpinBox()

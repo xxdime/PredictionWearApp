@@ -74,7 +74,9 @@ class PartWindow(QMainWindow):
         self.measurement_table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.measurement_table.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
         self.measurement_table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
-        self.measurement_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        header = self.measurement_table.horizontalHeader()
+        header.setSectionResizeMode(QHeaderView.ResizeMode.Fixed)
+        header.setStretchLastSection(False)
         center.addWidget(self.measurement_table, 0, 0)
 
         right = QVBoxLayout()
