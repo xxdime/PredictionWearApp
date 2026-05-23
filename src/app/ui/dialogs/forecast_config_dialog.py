@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QResizeEvent, QShowEvent
 from PySide6.QtWidgets import (
     QDialog,
     QDialogButtonBox,
@@ -36,7 +37,9 @@ class ForecastConfigDialog(QDialog):
 
         self.bounds_table = QTableWidget(0, 3)
         self.bounds_table.setHorizontalHeaderLabels(["Параметр", "Мин", "Макс"])
-        self.bounds_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        header = self.bounds_table.horizontalHeader()
+        header.setSectionResizeMode(QHeaderView.ResizeMode.Fixed)
+        header.setStretchLastSection(False)
         self._initial_bounds = bounds_from_json(lsq_param_bounds_json)
 
         self.k_spin = QDoubleSpinBox()
@@ -81,7 +84,27 @@ class ForecastConfigDialog(QDialog):
             self.bounds_table.setItem(row, 1, QTableWidgetItem(str(low)))
             self.bounds_table.setItem(row, 2, QTableWidgetItem(str(high)))
 
-        self.bounds_table.resizeColumnsToContents()
+        self._sync_bounds_columns()
+
+    def _sync_bounds_columns(self) -> None:
+        width = self.bounds_table.viewport().width()
+        if width <= 0:
+            return
+        columns = self.bounds_table.columnCount()
+        if columns == 0:
+            return
+        base_width = width // columns
+        for col in range(columns - 1):
+            self.bounds_table.setColumnWidth(col, base_width)
+        self.bounds_table.setColumnWidth(columns - 1, width - base_width * (columns - 1))
+
+    def showEvent(self, event: QShowEvent) -> None:
+        super().showEvent(event)
+        self._sync_bounds_columns()
+
+    def resizeEvent(self, event: QResizeEvent) -> None:
+        super().resizeEvent(event)
+        self._sync_bounds_columns()
 
     def _collect_bounds_from_table(self) -> dict[str, tuple[float, float]]:
         bounds: dict[str, tuple[float, float]] = {}

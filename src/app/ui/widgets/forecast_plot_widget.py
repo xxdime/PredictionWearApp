@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import numpy as np
 import pyqtgraph as pg
 from PySide6.QtWidgets import QVBoxLayout, QWidget
 
@@ -7,6 +8,9 @@ from app.domain.services.forecast_service import ForecastResult
 
 
 class ForecastPlotWidget(QWidget):
+    MIN_Y_RANGE_THRESHOLD = 1e-9
+    DEFAULT_Y_RANGE_SPAN = 1.0
+
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
 
@@ -89,3 +93,56 @@ class ForecastPlotWidget(QWidget):
                 labelOpts={"position": 0.85, "color": "g"},
             )
             self.plot.addItem(line_upper)
+
+        self._apply_critical_range(result, critical_value)
+
+    def _apply_critical_range(self, result: ForecastResult, critical_value: float) -> None:
+        if not np.isfinite(critical_value):
+            return
+
+        data = np.concatenate(
+            [
+                result.y_train.ravel(),
+                result.y_lsq.ravel(),
+                result.y_centered.ravel(),
+                result.y_upper.ravel(),
+                result.y_lower.ravel(),
+            ]
+        )
+        finite = data[np.isfinite(data)]
+        if finite.size == 0:
+            return
+
+        data_min = float(finite.min())
+        data_max = float(finite.max())
+        overall_min = min(data_min, float(critical_value))
+        overall_max = max(data_max, float(critical_value))
+        overall_min, overall_max = self._ensure_min_range(overall_min, overall_max)
+
+        if result.y_centered.size >= 2:
+            start = float(result.y_centered[0])
+            end = float(result.y_centered[-1])
+            if np.isfinite(start) and np.isfinite(end):
+                is_increasing = end >= start
+            else:
+                is_increasing = result.slope >= 0
+        else:
+            is_increasing = result.slope >= 0
+
+        if is_increasing:
+            y_min, y_max = overall_min, float(critical_value)
+        else:
+            y_min, y_max = float(critical_value), overall_max
+
+        if y_max <= y_min:
+            y_min, y_max = overall_min, overall_max
+
+        y_min, y_max = self._ensure_min_range(y_min, y_max)
+
+        self.plot.setYRange(y_min, y_max, padding=0.05)
+        self.plot.enableAutoRange(axis=pg.ViewBox.YAxis, enable=False)
+
+    def _ensure_min_range(self, y_min: float, y_max: float) -> tuple[float, float]:
+        if y_max - y_min < self.MIN_Y_RANGE_THRESHOLD:
+            y_max = y_min + self.DEFAULT_Y_RANGE_SPAN
+        return y_min, y_max

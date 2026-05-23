@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from PySide6.QtGui import QResizeEvent, QShowEvent
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QComboBox,
@@ -74,7 +75,9 @@ class PartWindow(QMainWindow):
         self.measurement_table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.measurement_table.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
         self.measurement_table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
-        self.measurement_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        header = self.measurement_table.horizontalHeader()
+        header.setSectionResizeMode(QHeaderView.ResizeMode.Fixed)
+        header.setStretchLastSection(False)
         center.addWidget(self.measurement_table, 0, 0)
 
         right = QVBoxLayout()
@@ -162,7 +165,27 @@ class PartWindow(QMainWindow):
             self.measurement_table.setItem(row, 0, QTableWidgetItem(f"{m.operating_hours:.3f}"))
             self.measurement_table.setItem(row, 1, QTableWidgetItem(f"{m.value:.6f}"))
 
-        self.measurement_table.resizeColumnsToContents()
+        self._sync_measurement_columns()
+
+    def _sync_measurement_columns(self) -> None:
+        width = self.measurement_table.viewport().width()
+        if width <= 0:
+            return
+        columns = self.measurement_table.columnCount()
+        if columns == 0:
+            return
+        base_width = width // columns
+        for col in range(columns - 1):
+            self.measurement_table.setColumnWidth(col, base_width)
+        self.measurement_table.setColumnWidth(columns - 1, width - base_width * (columns - 1))
+
+    def showEvent(self, event: QShowEvent) -> None:
+        super().showEvent(event)
+        self._sync_measurement_columns()
+
+    def resizeEvent(self, event: QResizeEvent) -> None:
+        super().resizeEvent(event)
+        self._sync_measurement_columns()
 
     def _selected_measurement(self) -> Measurement | None:
         row = self.measurement_table.currentRow()

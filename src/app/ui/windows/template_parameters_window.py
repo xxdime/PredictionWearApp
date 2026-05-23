@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from PySide6.QtGui import QResizeEvent, QShowEvent
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QHBoxLayout,
@@ -37,7 +38,9 @@ class TemplateParametersWindow(QMainWindow):
 
         self.table = QTableWidget(0, 3)
         self.table.setHorizontalHeaderLabels(["Название", "Ед. изм.", "Критическое"])
-        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        header = self.table.horizontalHeader()
+        header.setSectionResizeMode(QHeaderView.ResizeMode.Fixed)
+        header.setStretchLastSection(False)
         self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.table.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
@@ -74,6 +77,27 @@ class TemplateParametersWindow(QMainWindow):
             self.table.setItem(row, 0, QTableWidgetItem(p.name))
             self.table.setItem(row, 1, QTableWidgetItem(p.unit))
             self.table.setItem(row, 2, QTableWidgetItem(str(p.critical_value)))
+        self._sync_table_columns()
+
+    def _sync_table_columns(self) -> None:
+        width = self.table.viewport().width()
+        if width <= 0:
+            return
+        columns = self.table.columnCount()
+        if columns == 0:
+            return
+        base_width = width // columns
+        for col in range(columns - 1):
+            self.table.setColumnWidth(col, base_width)
+        self.table.setColumnWidth(columns - 1, width - base_width * (columns - 1))
+
+    def showEvent(self, event: QShowEvent) -> None:
+        super().showEvent(event)
+        self._sync_table_columns()
+
+    def resizeEvent(self, event: QResizeEvent) -> None:
+        super().resizeEvent(event)
+        self._sync_table_columns()
 
     def _selected_param(self) -> TemplateParameter | None:
         row = self.table.currentRow()
